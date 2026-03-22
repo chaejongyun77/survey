@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="ko">
+<nav th:fragment="navbar">
+    <div class="navbar">
+        <a class="navbar-brand" th:href="@{/surveys}">웅진씽크빅 설문</a>
+        <div class="navbar-menu">
+            <a th:href="@{/surveys}">설문 목록</a>
+            <!-- 로그인 사용자 정보 표시 -->
+            <span sec:authentication="name"></span>
+            <a th:href="@{/auth/logout}">로그아웃</a>
+        </div>
+    </div>
+</nav>
+</html>

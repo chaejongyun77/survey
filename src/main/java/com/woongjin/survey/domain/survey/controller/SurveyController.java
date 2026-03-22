@@ -5,7 +5,9 @@ import com.woongjin.survey.domain.survey.dto.SurveyResponseDto;
 import com.woongjin.survey.domain.survey.dto.SurveyUpdateRequestDto;
 import com.woongjin.survey.domain.survey.service.SurveyService;
 import com.woongjin.survey.global.response.ApiResponse;
+import com.woongjin.survey.global.auth.LoginMember;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -68,9 +70,9 @@ public class SurveyController {
     @PostMapping("/api")
     @ResponseBody
     public ResponseEntity<ApiResponse<Void>> create(
-            @Valid @RequestBody SurveyCreateRequestDto requestDto) {
-        // TODO: 로그인 연동 후 실제 사원번호로 교체
-        surveyService.createSurvey(requestDto, "SYSTEM");
+            @Valid @RequestBody SurveyCreateRequestDto requestDto,
+            @AuthenticationPrincipal LoginMember loginMember) {
+        surveyService.createSurvey(requestDto, loginMember.getLoginId());
         return ResponseEntity.ok(ApiResponse.success("설문이 생성되었습니다."));
     }
 
