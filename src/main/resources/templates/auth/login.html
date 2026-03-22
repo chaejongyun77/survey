@@ -3,75 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>로그인 - 웅진씽크빅 설문 서비스</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .login-box {
-            background: #fff;
-            padding: 48px 40px;
-            border-radius: 8px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-            width: 360px;
-        }
-        .login-box h1 {
-            font-size: 22px;
-            font-weight: 700;
-            color: #ff6b00;
-            margin-bottom: 8px;
-            text-align: center;
-        }
-        .login-box p.subtitle {
-            font-size: 13px;
-            color: #888;
-            text-align: center;
-            margin-bottom: 32px;
-        }
-        .form-group { margin-bottom: 16px; }
-        .form-group label {
-            display: block;
-            font-size: 13px;
-            color: #555;
-            margin-bottom: 6px;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 10px 14px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            outline: none;
-        }
-        .form-group input:focus { border-color: #ff6b00; }
-        .btn-login {
-            width: 100%;
-            padding: 12px;
-            background-color: #ff6b00;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 8px;
-        }
-        .btn-login:hover { background-color: #e55f00; }
-        .alert {
-            padding: 10px 14px;
-            border-radius: 4px;
-            font-size: 13px;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-        .alert-error { background-color: #fff0f0; color: #d9534f; border: 1px solid #f5c6cb; }
-        .alert-success { background-color: #f0fff4; color: #28a745; border: 1px solid #c3e6cb; }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/login.css}">
 </head>
 <body>
 
@@ -79,9 +11,7 @@
     <h1>웅진씽크빅</h1>
     <p class="subtitle">설문 관리 서비스</p>
 
-    <!-- 에러 메시지 -->
-    <div th:if="${errorMsg}" class="alert alert-error" th:text="${errorMsg}"></div>
-    <!-- 로그아웃 메시지 -->
+    <div th:if="${errorMsg}"  class="alert alert-error"   th:text="${errorMsg}"></div>
     <div th:if="${logoutMsg}" class="alert alert-success" th:text="${logoutMsg}"></div>
 
     <!--
@@ -91,11 +21,11 @@
     <form th:action="@{/auth/login}" method="post">
         <div class="form-group">
             <label for="loginId">아이디</label>
-            <input type="text" id="loginId" name="loginId" placeholder="아이디를 입력하세요" required />
+            <input type="text" id="loginId" name="loginId" placeholder="아이디를 입력하세요" required>
         </div>
         <div class="form-group">
             <label for="password">비밀번호</label>
-            <input type="password" id="password" name="password" placeholder="비밀번호를 입력하세요" required />
+            <input type="password" id="password" name="password" placeholder="비밀번호를 입력하세요" required>
         </div>
         <button type="submit" class="btn-login">로그인</button>
     </form>
