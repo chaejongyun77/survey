@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>설문 목록</title>
+</head>
+<body>
+
+<h1>설문 목록</h1>
+
+<a th:href="@{/surveys/new}">설문 등록</a>
+
+<table>
+    <thead>
+    <tr>
+        <th>번호</th>
+        <th>제목</th>
+        <th>상태</th>
+        <th>시작일</th>
+        <th>종료일</th>
+        <th>관리</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="survey : ${surveys}">
+        <td th:text="${survey.surveyId}"></td>
+        <td>
+            <a th:href="@{/surveys/{id}(id=${survey.surveyId})}" th:text="${survey.title}"></a>
+        </td>
+        <td th:text="${survey.status}"></td>
+        <td th:text="${#temporals.format(survey.startDate, 'yyyy-MM-dd')}"></td>
+        <td th:text="${#temporals.format(survey.endDate, 'yyyy-MM-dd')}"></td>
+        <td>
+            <a th:href="@{/surveys/{id}/edit(id=${survey.surveyId})}">수정</a>
+            <button th:onclick="|deleteSurvey(${survey.surveyId})|">삭제</button>
+        </td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(surveys)}">
+        <td colspan="6">등록된 설문이 없습니다.</td>
+    </tr>
+    </tbody>
+</table>
+
+<script>
+function deleteSurvey(surveyId) {
+    if (!confirm('정말 삭제하시겠습니까?')) return;
+    fetch('/surveys/api/' + surveyId, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) location.reload();
+        });
+}
+</script>
+
+</body>
+</html>

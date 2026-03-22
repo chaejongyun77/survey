@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.woongjin.survey.domain.survey.repository.SurveyMapper">
+
+    <resultMap id="SurveyResultMap" type="com.woongjin.survey.domain.survey.entity.Survey">
+        <id     property="surveyId"    column="survey_id"/>
+        <result property="title"       column="title"/>
+        <result property="description" column="description"/>
+        <result property="status"      column="status"/>
+        <result property="createdBy"   column="created_by"/>
+        <result property="startDate"   column="start_date"/>
+        <result property="endDate"     column="end_date"/>
+        <result property="createdAt"   column="created_at"/>
+        <result property="updatedAt"   column="updated_at"/>
+    </resultMap>
+
+    <!-- 전체 목록 조회 -->
+    <select id="findAll" resultMap="SurveyResultMap">
+        SELECT survey_id, title, description, status, created_by,
+               start_date, end_date, created_at, updated_at
+        FROM survey
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 단건 조회 -->
+    <select id="findById" parameterType="long" resultMap="SurveyResultMap">
+        SELECT survey_id, title, description, status, created_by,
+               start_date, end_date, created_at, updated_at
+        FROM survey
+        WHERE survey_id = #{surveyId}
+    </select>
+
+    <!-- 등록 -->
+    <insert id="insert" parameterType="com.woongjin.survey.domain.survey.entity.Survey"
+            useGeneratedKeys="true" keyProperty="surveyId">
+        INSERT INTO survey (title, description, status, created_by, start_date, end_date, created_at, updated_at)
+        VALUES (#{title}, #{description}, #{status}, #{createdBy}, #{startDate}, #{endDate}, NOW(), NOW())
+    </insert>
+
+    <!-- 수정 -->
+    <update id="update" parameterType="com.woongjin.survey.domain.survey.entity.Survey">
+        UPDATE survey
+        SET title       = #{title},
+            description = #{description},
+            status      = #{status},
+            start_date  = #{startDate},
+            end_date    = #{endDate},
+            updated_at  = NOW()
+        WHERE survey_id = #{surveyId}
+    </update>
+
+    <!-- 삭제 -->
+    <delete id="deleteById" parameterType="long">
+        DELETE FROM survey WHERE survey_id = #{surveyId}
+    </delete>
+
+</mapper>

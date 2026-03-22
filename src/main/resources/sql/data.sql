@@ -1,0 +1,1 @@
+-- 초기 데이터는 DataInitializer.java 에서 코드로 처리합니다.
