@@ -16,8 +16,8 @@
     <div th:if="${logoutMsg}" class="alert alert-success" th:text="${logoutMsg}"></div>
 
     <!--
-        POST /auth/login 은 Spring Security가 직접 처리
-        input name은 SecurityConfig의 usernameParameter/passwordParameter와 일치해야 함
+        POST /auth/login 은 AuthController가 직접 처리
+        → AuthService.login() → 토큰 발급 → 쿠키 세팅 → /surveys 리다이렉트
     -->
     <form th:action="@{/auth/login}" method="post">
         <div class="form-group">
