@@ -4,14 +4,16 @@ import com.woongjin.survey.domain.member.entity.Member;
 import com.woongjin.survey.domain.member.repository.MemberMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * 앱 시작 시 테스트 계정 자동 생성
- * - BCrypt 해시를 코드에서 직접 생성하므로 비밀번호가 항상 정확함
+ * 앱 시작 시 초기 계정 자동 생성
+ * - 계정 정보는 .env (local) 또는 OS 환경변수 (dev/prod)에서 주입
+ * - 코드에 아이디/비밀번호가 노출되지 않음
  */
 @Slf4j
 @Component
@@ -21,13 +23,20 @@ public class DataInitializer implements ApplicationRunner {
     private final MemberMapper memberMapper;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${INIT_ADMIN_ID}")
+    private String adminId;
+    @Value("${INIT_ADMIN_PW}")
+    private String adminPw;
+    @Value("${INIT_ADMIN_NAME}")
+    private String adminName;
+    @Value("${INIT_ADMIN_EMAIL}")
+    private String adminEmail;
+
+
     @Override
     public void run(ApplicationArguments args) {
-        createIfAbsent("admin",  "1234", "관리자", "admin@woongjin.com",  "ROLE_ADMIN");
-        createIfAbsent("user01", "1234", "홍길동", "user01@woongjin.com", "ROLE_USER");
-        log.info("=== 테스트 계정 초기화 완료 ===");
-        log.info("  admin  / 1234 (ROLE_ADMIN)");
-        log.info("  user01 / 1234 (ROLE_USER)");
+        createIfAbsent(adminId, adminPw, adminName, adminEmail, "ROLE_ADMIN");
+        log.info("=== 초기 계정 초기화 완료 ===");
     }
 
     private void createIfAbsent(String loginId, String rawPassword,
