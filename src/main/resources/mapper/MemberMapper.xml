@@ -24,6 +24,14 @@
           AND status = 'ACTIVE'
     </select>
 
+    <!-- 회원 PK로 조회 (토큰 재발급 시 사용) -->
+    <select id="findById" parameterType="long" resultMap="MemberResultMap">
+        SELECT member_id, login_id, password, name, email, role, status, created_at, updated_at
+        FROM member
+        WHERE member_id = #{memberId}
+          AND status = 'ACTIVE'
+    </select>
+
     <!-- 회원 등록 -->
     <insert id="insertMember" parameterType="com.woongjin.survey.domain.member.entity.Member"
             useGeneratedKeys="true" keyProperty="memberId">
