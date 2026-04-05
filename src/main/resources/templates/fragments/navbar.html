@@ -6,9 +6,12 @@
         <a class="navbar-brand" th:href="@{/surveys}">웅진씽크빅 설문</a>
         <div class="navbar-menu">
             <a th:href="@{/surveys}">설문 목록</a>
-            <!-- 로그인 사용자 정보 표시 -->
-            <span sec:authentication="name"></span>
-            <a th:href="@{/auth/logout}">로그아웃</a>
+            <!-- 로그인 사용자 이름 표시 -->
+            <span sec:authorize="isAuthenticated()" sec:authentication="principal.name"></span>
+            <!-- JWT 방식: POST로 로그아웃 요청 -->
+            <form th:action="@{/auth/logout}" method="post" style="display:inline;">
+                <button type="submit" class="btn-logout">로그아웃</button>
+            </form>
         </div>
     </div>
 </nav>
