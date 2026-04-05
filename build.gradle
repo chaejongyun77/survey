@@ -40,6 +40,9 @@ dependencies {
     // Embedded Redis (로컬 개발용)
     implementation 'it.ozimov:embedded-redis:0.7.3' exclude group: 'org.slf4j', module: 'slf4j-simple'
 
+    // spring-dotenv (.env 파일 로드)
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+
     implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.5'
     implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
     compileOnly 'org.projectlombok:lombok'
