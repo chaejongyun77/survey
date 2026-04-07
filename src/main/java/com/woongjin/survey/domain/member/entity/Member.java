@@ -1,9 +1,13 @@
 package com.woongjin.survey.domain.member.entity;
 
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -14,15 +18,39 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Entity
+@Table(name = "member")
+@EntityListeners(AuditingEntityListener.class)
 public class Member {
 
-    private Long memberId;          // PK
-    private String loginId;         // 로그인 ID (사원번호 등)
-    private String password;        // BCrypt 암호화된 비밀번호
-    private String name;            // 이름
-    private String email;           // 이메일
-    private String role;            // 권한: ROLE_USER / ROLE_ADMIN
-    private String status;          // 상태: ACTIVE / INACTIVE
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "member_id")
+    private Long memberId;
+
+    @Column(name = "login_id", nullable = false, unique = true)
+    private String loginId;
+
+    @Column(nullable = false)
+    private String password;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = false)
+    private String email;
+
+    @Column(nullable = false)
+    private String role;            // ROLE_USER / ROLE_ADMIN
+
+    @Column(nullable = false)
+    private String status;          // ACTIVE / INACTIVE
+
+    @CreatedDate
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }

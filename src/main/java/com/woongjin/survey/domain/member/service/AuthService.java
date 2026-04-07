@@ -2,7 +2,7 @@ package com.woongjin.survey.domain.member.service;
 
 import com.woongjin.survey.domain.member.dto.TokenResponse;
 import com.woongjin.survey.domain.member.entity.Member;
-import com.woongjin.survey.domain.member.repository.MemberMapper;
+import com.woongjin.survey.domain.member.repository.MemberRepository;
 import com.woongjin.survey.global.auth.LoginMember;
 import com.woongjin.survey.global.jwt.JwtProperties;
 import com.woongjin.survey.global.jwt.JwtTokenProvider;
@@ -30,7 +30,7 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final RedisTokenRepository redisTokenRepository;
     private final JwtProperties jwtProperties;
-    private final MemberMapper memberMapper;
+    private final MemberRepository memberRepository;
 
     /**
      * 로그인
@@ -118,7 +118,7 @@ public class AuthService {
         }
 
         // 3) DB에서 최신 사용자 정보 조회 (권한 변경 반영)
-        Member member = memberMapper.findById(memberId)
+        Member member = memberRepository.findByMemberIdAndStatus(memberId, "ACTIVE")
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
         // 4) 새 토큰 생성

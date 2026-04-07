@@ -1,7 +1,7 @@
 package com.woongjin.survey.global.config;
 
 import com.woongjin.survey.domain.member.entity.Member;
-import com.woongjin.survey.domain.member.repository.MemberMapper;
+import com.woongjin.survey.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class DataInitializer implements ApplicationRunner {
 
-    private final MemberMapper memberMapper;
+    private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${INIT_ADMIN_ID}")
@@ -41,7 +41,7 @@ public class DataInitializer implements ApplicationRunner {
 
     private void createIfAbsent(String loginId, String rawPassword,
                                 String name, String email, String role) {
-        if (memberMapper.findByLoginId(loginId).isEmpty()) {
+        if (memberRepository.findByLoginIdAndStatus(loginId, "ACTIVE").isEmpty()) {
             Member member = Member.builder()
                     .loginId(loginId)
                     .password(passwordEncoder.encode(rawPassword))
@@ -50,7 +50,7 @@ public class DataInitializer implements ApplicationRunner {
                     .role(role)
                     .status("ACTIVE")
                     .build();
-            memberMapper.insertMember(member);
+            memberRepository.save(member);
             log.info("계정 생성: {}", loginId);
         }
     }
