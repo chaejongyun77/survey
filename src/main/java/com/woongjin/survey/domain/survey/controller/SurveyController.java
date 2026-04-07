@@ -5,7 +5,7 @@ import com.woongjin.survey.domain.survey.dto.SurveyResponseDto;
 import com.woongjin.survey.domain.survey.dto.SurveyUpdateRequestDto;
 import com.woongjin.survey.domain.survey.service.SurveyService;
 import com.woongjin.survey.global.response.ApiResponse;
-import com.woongjin.survey.global.auth.LoginMember;
+import com.woongjin.survey.domain.auth.infra.UserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import lombok.RequiredArgsConstructor;
@@ -71,8 +71,8 @@ public class SurveyController {
     @ResponseBody
     public ResponseEntity<ApiResponse<Void>> create(
             @Valid @RequestBody SurveyCreateRequestDto requestDto,
-            @AuthenticationPrincipal LoginMember loginMember) {
-        surveyService.createSurvey(requestDto, loginMember.getLoginId());
+            @AuthenticationPrincipal UserPrincipal UserPrincipal) {
+        surveyService.createSurvey(requestDto, UserPrincipal.getLoginId());
         return ResponseEntity.ok(ApiResponse.success("설문이 생성되었습니다."));
     }
 

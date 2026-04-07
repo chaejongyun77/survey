@@ -1,6 +1,6 @@
 package com.woongjin.survey.global.config;
 
-import com.woongjin.survey.domain.member.entity.Member;
+import com.woongjin.survey.domain.member.domain.Member;
 import com.woongjin.survey.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,4 +1,4 @@
-package com.woongjin.survey.global.redis;
+package com.woongjin.survey.domain.auth.infra;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;

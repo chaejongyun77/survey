@@ -1,6 +1,6 @@
 package com.woongjin.survey.global.jwt;
 
-import com.woongjin.survey.global.auth.LoginMember;
+import com.woongjin.survey.domain.auth.infra.UserPrincipal;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
@@ -97,7 +97,7 @@ public class JwtTokenProvider {
         String loginId = claims.get("loginId", String.class);
         String role = claims.get("role", String.class);
 
-        LoginMember loginMember = new LoginMember(
+        UserPrincipal UserPrincipal = new UserPrincipal(
                 memberId,
                 loginId,
                 "",  // 비밀번호는 토큰 인증 시 불필요
@@ -105,7 +105,7 @@ public class JwtTokenProvider {
                 List.of(new SimpleGrantedAuthority(role))
         );
 
-        return new UsernamePasswordAuthenticationToken(loginMember, token, loginMember.getAuthorities());
+        return new UsernamePasswordAuthenticationToken(UserPrincipal, token, UserPrincipal.getAuthorities());
     }
 
     /**

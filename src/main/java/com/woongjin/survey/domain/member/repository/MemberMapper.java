@@ -1,6 +1,6 @@
 package com.woongjin.survey.domain.member.repository;
 
-import com.woongjin.survey.domain.member.entity.Member;
+import com.woongjin.survey.domain.member.domain.Member;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.Optional;

@@ -1,10 +1,10 @@
 package com.woongjin.survey.domain.member.service;
 
-import com.woongjin.survey.domain.member.dto.TokenResponse;
-import com.woongjin.survey.global.auth.LoginMember;
+import com.woongjin.survey.domain.auth.service.TokenResponse;
+import com.woongjin.survey.domain.auth.infra.UserPrincipal;
 import com.woongjin.survey.global.jwt.JwtProperties;
 import com.woongjin.survey.global.jwt.JwtTokenProvider;
-import com.woongjin.survey.global.redis.RedisTokenRepository;
+import com.woongjin.survey.domain.auth.infra.RedisTokenRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,13 +60,13 @@ class AuthServiceTest {
     // 공통 테스트 데이터
     // =============================================
 
-    private LoginMember loginMember;
+    private UserPrincipal UserPrincipal;
     private Authentication authentication;
 
     @BeforeEach
     void setUp() {
-        // 로그인 성공 시 authenticationManager가 반환할 가짜 LoginMember
-        loginMember = new LoginMember(
+        // 로그인 성공 시 authenticationManager가 반환할 가짜 UserPrincipal
+        UserPrincipal = new UserPrincipal(
                 1L,
                 "admin",
                 "encoded_password",
@@ -76,7 +76,7 @@ class AuthServiceTest {
 
         // authenticationManager.authenticate()가 반환할 가짜 Authentication 객체
         authentication = new UsernamePasswordAuthenticationToken(
-                loginMember, null, loginMember.getAuthorities()
+                UserPrincipal, null, UserPrincipal.getAuthorities()
         );
     }
 

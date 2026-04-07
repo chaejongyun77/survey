@@ -1,6 +1,6 @@
-package com.woongjin.survey.global.config;
+package com.woongjin.survey.global.jpa;
 
-import com.woongjin.survey.global.auth.LoginMember;
+import com.woongjin.survey.domain.auth.infra.UserPrincipal;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,9 +31,9 @@ public class AuditorAwareImpl implements AuditorAware<String> {
             return Optional.of("UNKNOWN");
         }
 
-        // LoginMember에서 loginId 추출
-        if (authentication.getPrincipal() instanceof LoginMember loginMember) {
-            return Optional.of(loginMember.getLoginId());
+        // UserPrincipal에서 loginId 추출
+        if (authentication.getPrincipal() instanceof UserPrincipal UserPrincipal) {
+            return Optional.of(UserPrincipal.getLoginId());
         }
 
         return Optional.of("UNKNOWN");

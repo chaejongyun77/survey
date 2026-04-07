@@ -1,4 +1,4 @@
-package com.woongjin.survey.global.config;
+package com.woongjin.survey.global.security;
 
 import com.woongjin.survey.global.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;

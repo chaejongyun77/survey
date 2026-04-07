@@ -1,4 +1,4 @@
-package com.woongjin.survey.global.entity;
+package com.woongjin.survey.global.jpa;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;

@@ -1,4 +1,4 @@
-package com.woongjin.survey.global.config;
+package com.woongjin.survey.global.redis;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

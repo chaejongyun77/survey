@@ -1,8 +1,8 @@
-package com.woongjin.survey.domain.member.controller;
+package com.woongjin.survey.domain.auth.controller;
 
-import com.woongjin.survey.domain.member.dto.TokenResponse;
-import com.woongjin.survey.domain.member.service.AuthService;
-import com.woongjin.survey.global.auth.LoginMember;
+import com.woongjin.survey.domain.auth.service.AuthService;
+import com.woongjin.survey.domain.auth.service.TokenResponse;
+import com.woongjin.survey.domain.auth.infra.UserPrincipal;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -95,12 +95,12 @@ public class AuthController {
      * 3) 로그인 페이지로 리다이렉트
      */
     @PostMapping("/logout")
-    public String logout(@AuthenticationPrincipal LoginMember loginMember,
+    public String logout(@AuthenticationPrincipal UserPrincipal UserPrincipal,
                          HttpServletResponse response) {
 
-        if (loginMember != null) {
+        if (UserPrincipal != null) {
             // 1) Redis에서 Refresh Token 삭제
-            authService.logout(loginMember.getMemberId());
+            authService.logout(UserPrincipal.getMemberId());
         }
 
         // 2) 쿠키 삭제 (maxAge=0 → 브라우저가 즉시 삭제)

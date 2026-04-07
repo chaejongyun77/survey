@@ -1,4 +1,4 @@
-package com.woongjin.survey.domain.member.entity;
+package com.woongjin.survey.domain.member.domain;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -41,10 +41,10 @@ public class Member {
     private String email;
 
     @Column(nullable = false)
-    private String role;            // ROLE_USER / ROLE_ADMIN
+    private String role;        // ROLE_USER / ROLE_ADMIN
 
     @Column(nullable = false)
-    private String status;          // ACTIVE / INACTIVE
+    private String status;      // ACTIVE / INACTIVE
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)

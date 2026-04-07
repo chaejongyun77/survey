@@ -1,4 +1,4 @@
-package com.woongjin.survey.domain.member.dto;
+package com.woongjin.survey.domain.auth.service;
 
 /**
  * 토큰 응답 DTO

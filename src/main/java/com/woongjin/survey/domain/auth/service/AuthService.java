@@ -1,12 +1,11 @@
-package com.woongjin.survey.domain.member.service;
+package com.woongjin.survey.domain.auth.service;
 
-import com.woongjin.survey.domain.member.dto.TokenResponse;
-import com.woongjin.survey.domain.member.entity.Member;
+import com.woongjin.survey.domain.member.domain.Member;
 import com.woongjin.survey.domain.member.repository.MemberRepository;
-import com.woongjin.survey.global.auth.LoginMember;
+import com.woongjin.survey.domain.auth.infra.UserPrincipal;
 import com.woongjin.survey.global.jwt.JwtProperties;
 import com.woongjin.survey.global.jwt.JwtTokenProvider;
-import com.woongjin.survey.global.redis.RedisTokenRepository;
+import com.woongjin.survey.domain.auth.infra.RedisTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -38,7 +37,7 @@ public class AuthService {
      * 흐름:
      * 1) AuthenticationManager가 CustomUserDetailsService를 호출해서 DB 조회
      * 2) 비밀번호 검증 (BCrypt)
-     * 3) 검증 성공 → LoginMember 객체 획득
+     * 3) 검증 성공 → UserPrincipal 객체 획득
      * 4) Access Token + Refresh Token 생성
      * 5) Redis에 Refresh Token 저장
      *
@@ -52,10 +51,10 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(loginId, password)
         );
 
-        // 3) 검증 성공 → LoginMember 꺼내기
-        LoginMember loginMember = (LoginMember) authentication.getPrincipal();
-        Long memberId = loginMember.getMemberId();
-        String role = loginMember.getAuthorities().stream()
+        // 3) 검증 성공 → UserPrincipal 꺼내기
+        UserPrincipal UserPrincipal = (UserPrincipal) authentication.getPrincipal();
+        Long memberId = UserPrincipal.getMemberId();
+        String role = UserPrincipal.getAuthorities().stream()
                 .findFirst()
                 .map(GrantedAuthority::getAuthority)
                 .orElse("ROLE_USER");
