@@ -21,6 +21,11 @@ import java.util.List;
  *
  * - Access Token: 사용자 인증용 (짧은 만료)
  * - Refresh Token: Access Token 재발급용 (긴 만료, Redis에 저장)
+ *
+ * [설계 원칙]
+ * - getClaims()는 public으로 노출. 파싱 실패 시 JwtAuthException을 던짐.
+ * - validateToken()은 제거. 호출부에서 getClaims()를 직접 호출하거나 try-catch로 처리.
+ *   → boolean 반환으로 에러 정보를 숨기던 방식 대신, 예외를 통해 구체적인 실패 이유를 전달.
  */
 @Slf4j
 @Component
@@ -71,19 +76,27 @@ public class JwtTokenProvider {
     }
 
     /**
-     * 토큰 검증
-     * - 서명 위변조 확인 + 만료 여부 확인
+     * 토큰에서 Claims 파싱 (검증 포함)
+     * - 만료: JwtAuthException(TOKEN_EXPIRED)
+     * - 위변조/형식오류: JwtAuthException(TOKEN_INVALID)
+     *
+     * 이 메서드가 정상 반환되면 토큰은 유효함이 보장됨.
+     * 호출 측에서 별도 validateToken() 없이 이 메서드 하나로 검증 + 파싱을 동시에 처리.
      */
-    public boolean validateToken(String token) {
+    public Claims getClaims(String token) {
         try {
-            getClaims(token);
-            return true;
+            return Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
         } catch (ExpiredJwtException e) {
             log.warn("JWT 토큰 만료: {}", e.getMessage());
+            throw new JwtAuthException(JwtErrorCode.TOKEN_EXPIRED);
         } catch (JwtException e) {
             log.warn("JWT 토큰 검증 실패: {}", e.getMessage());
+            throw new JwtAuthException(JwtErrorCode.TOKEN_INVALID);
         }
-        return false;
     }
 
     /**
@@ -97,7 +110,7 @@ public class JwtTokenProvider {
         String loginId = claims.get("loginId", String.class);
         String role = claims.get("role", String.class);
 
-        UserPrincipal UserPrincipal = new UserPrincipal(
+        UserPrincipal userPrincipal = new UserPrincipal(
                 memberId,
                 loginId,
                 "",  // 비밀번호는 토큰 인증 시 불필요
@@ -105,33 +118,7 @@ public class JwtTokenProvider {
                 List.of(new SimpleGrantedAuthority(role))
         );
 
-        return new UsernamePasswordAuthenticationToken(UserPrincipal, token, UserPrincipal.getAuthorities());
+        return new UsernamePasswordAuthenticationToken(userPrincipal, token, userPrincipal.getAuthorities());
     }
 
-    /**
-     * 토큰에서 memberId 추출
-     */
-    public Long getMemberId(String token) {
-        return Long.valueOf(getClaims(token).getSubject());
-    }
-
-    /**
-     * 토큰 남은 만료시간 (ms)
-     * - 로그아웃 시 Access Token 블랙리스트 TTL 설정에 사용
-     */
-    public long getRemainingExpiration(String token) {
-        Date expiration = getClaims(token).getExpiration();
-        return expiration.getTime() - System.currentTimeMillis();
-    }
-
-    /**
-     * 토큰에서 Claims 파싱
-     */
-    private Claims getClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-    }
 }

@@ -1,5 +1,7 @@
 package com.woongjin.survey.global.jwt;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.woongjin.survey.global.response.ApiResponse;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -7,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -14,6 +17,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * JWT 인증 필터
@@ -22,8 +26,13 @@ import java.io.IOException;
  *
  * 동작 흐름:
  * 1) 토큰 추출 (쿠키 우선 → 헤더 fallback)
- * 2) 토큰 없으면 → 그냥 통과 (비인증 상태, Security가 접근 제어)
- * 3) 토큰 있으면 → 검증 → 유효하면 SecurityContext에 인증 정보 세팅
+ * 2) 토큰 없으면 → 통과 (비인증 상태, Security가 접근 제어)
+ * 3) 토큰 있으면 → getClaims() 호출 (검증 + 파싱 동시)
+ *    - 성공: SecurityContext에 인증 정보 세팅 후 통과
+ *    - 실패(JwtAuthException): ApiResponse로 직렬화하여 즉시 응답 (필터 체인 중단)
+ *
+ * [주의] GlobalExceptionHandler는 Spring MVC 레이어에만 동작하므로
+ *        필터에서 발생하는 예외는 여기서 직접 처리해야 함.
  */
 @Slf4j
 @Component
@@ -31,6 +40,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final ObjectMapper objectMapper;
 
     private static final String ACCESS_TOKEN_COOKIE = "ACCESS_TOKEN";
     private static final String AUTHORIZATION_HEADER = "Authorization";
@@ -41,18 +51,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        // 1) 토큰 추출
         String token = resolveToken(request);
 
-        // 2) 토큰이 있고 유효하면 → 인증 처리
-        if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
-            Authentication authentication = jwtTokenProvider.getAuthentication(token);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            log.debug("JWT 인증 성공: {}", authentication.getName());
+        // 토큰이 존재할 때만 검증 및 인증 시도
+        if (StringUtils.hasText(token)) {
+            try {
+                Authentication authentication = jwtTokenProvider.getAuthentication(token);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                log.debug("JWT 인증 성공: {}", authentication.getName());
+
+            } catch (JwtAuthException e) {
+                sendErrorResponse(response, e.getErrorCode());
+                return;
+            }
         }
 
-        // 3) 다음 필터로 진행
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * JWT 예외를 ApiResponse 형태로 직렬화하여 응답
+     * - 필터 체인을 중단하고 즉시 응답 반환
+     */
+    private void sendErrorResponse(HttpServletResponse response, JwtErrorCode errorCode) throws IOException {
+        response.setStatus(errorCode.getStatus().value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+
+        String body = objectMapper.writeValueAsString(ApiResponse.error(errorCode.getMessage()));
+        response.getWriter().write(body);
+
+        log.warn("JWT 인증 실패 [{}]: {}", errorCode.name(), errorCode.getMessage());
     }
 
     /**

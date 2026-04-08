@@ -1,5 +1,6 @@
 package com.woongjin.survey.domain.member.service;
 
+import com.woongjin.survey.domain.auth.service.AuthService;
 import com.woongjin.survey.domain.auth.service.TokenResponse;
 import com.woongjin.survey.domain.auth.infra.UserPrincipal;
 import com.woongjin.survey.global.jwt.JwtProperties;

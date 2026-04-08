@@ -3,6 +3,8 @@ package com.woongjin.survey.domain.auth.service;
 import com.woongjin.survey.domain.member.domain.Member;
 import com.woongjin.survey.domain.member.repository.MemberRepository;
 import com.woongjin.survey.domain.auth.infra.UserPrincipal;
+import com.woongjin.survey.global.jwt.JwtAuthException;
+import com.woongjin.survey.global.jwt.JwtErrorCode;
 import com.woongjin.survey.global.jwt.JwtProperties;
 import com.woongjin.survey.global.jwt.JwtTokenProvider;
 import com.woongjin.survey.domain.auth.infra.RedisTokenRepository;
@@ -90,7 +92,7 @@ public class AuthService {
      * 토큰 재발급 (Refresh Token Rotation)
      *
      * 흐름:
-     * 1) Refresh Token 유효성 검증
+     * 1) getClaims()로 Refresh Token 검증 (만료/위변조 시 JwtAuthException 자동 throw)
      * 2) Redis에 저장된 값과 비교
      * 3) DB에서 최신 사용자 정보 조회
      * 4) 새 Access Token + 새 Refresh Token 발급
@@ -98,22 +100,22 @@ public class AuthService {
      *
      * @param refreshToken 클라이언트가 보낸 Refresh Token
      * @return 새 Access Token + 새 Refresh Token
-     * @throws IllegalArgumentException 토큰이 유효하지 않거나 Redis 값과 불일치 시
+     * @throws JwtAuthException 토큰 만료/위변조 또는 Redis 값과 불일치 시
      */
     public TokenResponse reissue(String refreshToken) {
-        // 1) Refresh Token 유효성 검증
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
-            throw new IllegalArgumentException("유효하지 않은 Refresh Token입니다.");
-        }
+        // 1) 검증 + memberId 추출 (실패 시 JwtAuthException throw → GlobalExceptionHandler 처리)
+        Long memberId = Long.valueOf(jwtTokenProvider.getClaims(refreshToken).getSubject());
 
         // 2) Redis에 저장된 값과 비교
-        Long memberId = jwtTokenProvider.getMemberId(refreshToken);
         String savedToken = redisTokenRepository.getRefreshToken(memberId);
 
-        if (savedToken == null || !savedToken.equals(refreshToken)) {
+        if (savedToken == null) {
+            throw new JwtAuthException(JwtErrorCode.REFRESH_TOKEN_NOT_FOUND);
+        }
+        if (!savedToken.equals(refreshToken)) {
             // 탈취 의심 → 저장된 Refresh Token도 삭제
             redisTokenRepository.deleteRefreshToken(memberId);
-            throw new IllegalArgumentException("Refresh Token이 일치하지 않습니다. 다시 로그인해주세요.");
+            throw new JwtAuthException(JwtErrorCode.REFRESH_TOKEN_MISMATCH);
         }
 
         // 3) DB에서 최신 사용자 정보 조회 (권한 변경 반영)

@@ -1,5 +1,6 @@
 package com.woongjin.survey.global.exception;
 
+import com.woongjin.survey.global.jwt.JwtAuthException;
 import com.woongjin.survey.global.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -14,10 +15,23 @@ import java.util.stream.Collectors;
 
 /**
  * 전역 예외 처리 핸들러
+ *
+ * [JwtAuthException 처리 범위]
+ * - 필터(JwtAuthenticationFilter)에서 발생: 여기까지 도달하지 않음 → 필터에서 직접 처리
+ * - 서비스(AuthService 등)에서 발생: 여기서 처리
  */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    /** JWT 인증/검증 예외 (서비스 레이어에서 throw된 경우) */
+    @ExceptionHandler(JwtAuthException.class)
+    public ResponseEntity<ApiResponse<Void>> handleJwtAuthException(JwtAuthException e) {
+        log.warn("JwtAuthException [{}]: {}", e.getErrorCode().name(), e.getMessage());
+        return ResponseEntity
+                .status(e.getErrorCode().getStatus())
+                .body(ApiResponse.error(e.getMessage()));
+    }
 
     /** 비즈니스 예외 (404 수준) */
     @ExceptionHandler(CustomException.class)
