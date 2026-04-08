@@ -13,25 +13,26 @@ import java.util.Collection;
  *
  * 사용 예시:
  *   @GetMapping
- *   public String page(@AuthenticationPrincipal UserPrincipal UserPrincipal) {
- *       String loginId = UserPrincipal.getLoginId();
- *       String name    = UserPrincipal.getName();
+ *   public String page(@AuthenticationPrincipal UserPrincipal principal) {
+ *       String empNo   = principal.getEmpNo();
+ *       String empName = principal.getEmpName();
  *   }
  */
 @Getter
 public class UserPrincipal extends User {
 
-    private final Long memberId;
-    private final String name;
+    private final Long empId;
+    private final String empName;
 
-    public UserPrincipal(Long memberId, String loginId, String password,
-                       String name, Collection<? extends GrantedAuthority> authorities) {
-        super(loginId, password, authorities);
-        this.memberId = memberId;
-        this.name = name;
+    public UserPrincipal(Long empId, String empNo, String password,
+                         String empName, Collection<? extends GrantedAuthority> authorities) {
+        super(empNo, password, authorities);
+        this.empId   = empId;
+        this.empName = empName;
     }
 
-    public String getLoginId() {
-        return getUsername(); // User 클래스의 getUsername() = loginId
+    /** empNo — Spring Security의 username 필드에 저장 */
+    public String getEmpNo() {
+        return getUsername();
     }
 }

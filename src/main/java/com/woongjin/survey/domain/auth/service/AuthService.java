@@ -1,7 +1,8 @@
 package com.woongjin.survey.domain.auth.service;
 
-import com.woongjin.survey.domain.member.domain.Member;
-import com.woongjin.survey.domain.member.repository.MemberRepository;
+import com.woongjin.survey.domain.employee.domain.Employee;
+import com.woongjin.survey.domain.employee.domain.enums.EmployeeStatus;
+import com.woongjin.survey.domain.employee.repository.EmployeeRepository;
 import com.woongjin.survey.domain.auth.infra.UserPrincipal;
 import com.woongjin.survey.global.jwt.JwtAuthException;
 import com.woongjin.survey.global.jwt.JwtErrorCode;
@@ -31,7 +32,7 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final RedisTokenRepository redisTokenRepository;
     private final JwtProperties jwtProperties;
-    private final MemberRepository memberRepository;
+    private final EmployeeRepository employeeRepository;
 
     /**
      * 로그인
@@ -43,34 +44,34 @@ public class AuthService {
      * 4) Access Token + Refresh Token 생성
      * 5) Redis에 Refresh Token 저장
      *
-     * @param loginId  사용자 로그인 ID
-     * @param password 사용자 비밀번호 (평문)
+     * @param empNo    사번 (로그인 ID)
+     * @param password 비밀번호 (평문)
      * @return Access Token + Refresh Token
      */
-    public TokenResponse login(String loginId, String password) {
+    public TokenResponse login(String empNo, String password) {
         // 1~2) ID/PW 검증 (내부에서 CustomUserDetailsService.loadUserByUsername 호출)
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginId, password)
+                new UsernamePasswordAuthenticationToken(empNo, password)
         );
 
         // 3) 검증 성공 → UserPrincipal 꺼내기
-        UserPrincipal UserPrincipal = (UserPrincipal) authentication.getPrincipal();
-        Long memberId = UserPrincipal.getMemberId();
-        String role = UserPrincipal.getAuthorities().stream()
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        Long empId = principal.getEmpId();
+        String role = principal.getAuthorities().stream()
                 .findFirst()
                 .map(GrantedAuthority::getAuthority)
                 .orElse("ROLE_USER");
 
         // 4) 토큰 생성
-        String accessToken = jwtTokenProvider.generateAccessToken(memberId, loginId, role);
-        String refreshToken = jwtTokenProvider.generateRefreshToken(memberId);
+        String accessToken  = jwtTokenProvider.generateAccessToken(empId, empNo, role);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(empId);
 
         // 5) Redis에 Refresh Token 저장
         redisTokenRepository.saveRefreshToken(
-                memberId, refreshToken, jwtProperties.getRefreshTokenExpiration()
+                empId, refreshToken, jwtProperties.getRefreshTokenExpiration()
         );
 
-        log.info("로그인 성공: memberId={}, loginId={}", memberId, loginId);
+        log.info("로그인 성공: empId={}, empNo={}", empId, empNo);
         return new TokenResponse(accessToken, refreshToken);
     }
 
@@ -81,11 +82,11 @@ public class AuthService {
      * 1) Redis에서 Refresh Token 삭제
      * 2) 쿠키 삭제는 AuthController에서 처리
      *
-     * @param memberId 로그아웃할 회원 PK
+     * @param empId 로그아웃할 직원 PK
      */
-    public void logout(Long memberId) {
-        redisTokenRepository.deleteRefreshToken(memberId);
-        log.info("로그아웃: memberId={}", memberId);
+    public void logout(Long empId) {
+        redisTokenRepository.deleteRefreshToken(empId);
+        log.info("로그아웃: empId={}", empId);
     }
 
     /**
@@ -94,7 +95,7 @@ public class AuthService {
      * 흐름:
      * 1) getClaims()로 Refresh Token 검증 (만료/위변조 시 JwtAuthException 자동 throw)
      * 2) Redis에 저장된 값과 비교
-     * 3) DB에서 최신 사용자 정보 조회
+     * 3) DB에서 최신 직원 정보 조회 (권한 변경 반영)
      * 4) 새 Access Token + 새 Refresh Token 발급
      * 5) Redis에 새 Refresh Token 저장 (기존 것 교체)
      *
@@ -103,37 +104,37 @@ public class AuthService {
      * @throws JwtAuthException 토큰 만료/위변조 또는 Redis 값과 불일치 시
      */
     public TokenResponse reissue(String refreshToken) {
-        // 1) 검증 + memberId 추출 (실패 시 JwtAuthException throw → GlobalExceptionHandler 처리)
-        Long memberId = Long.valueOf(jwtTokenProvider.getClaims(refreshToken).getSubject());
+        // 1) 검증 + empId 추출 (실패 시 JwtAuthException throw → GlobalExceptionHandler 처리)
+        Long empId = Long.valueOf(jwtTokenProvider.getClaims(refreshToken).getSubject());
 
         // 2) Redis에 저장된 값과 비교
-        String savedToken = redisTokenRepository.getRefreshToken(memberId);
+        String savedToken = redisTokenRepository.getRefreshToken(empId);
 
         if (savedToken == null) {
             throw new JwtAuthException(JwtErrorCode.REFRESH_TOKEN_NOT_FOUND);
         }
         if (!savedToken.equals(refreshToken)) {
             // 탈취 의심 → 저장된 Refresh Token도 삭제
-            redisTokenRepository.deleteRefreshToken(memberId);
+            redisTokenRepository.deleteRefreshToken(empId);
             throw new JwtAuthException(JwtErrorCode.REFRESH_TOKEN_MISMATCH);
         }
 
-        // 3) DB에서 최신 사용자 정보 조회 (권한 변경 반영)
-        Member member = memberRepository.findByMemberIdAndStatus(memberId, "ACTIVE")
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        // 3) DB에서 최신 직원 정보 조회
+        Employee employee = employeeRepository.findByIdAndStatus(empId, EmployeeStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 직원입니다."));
 
         // 4) 새 토큰 생성
-        String newAccessToken = jwtTokenProvider.generateAccessToken(
-                memberId, member.getLoginId(), member.getRole()
+        String newAccessToken  = jwtTokenProvider.generateAccessToken(
+                empId, employee.getEmpNo(), employee.getRole().name()
         );
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(memberId);
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(empId);
 
         // 5) Redis에 새 Refresh Token 저장 (Rotation)
         redisTokenRepository.saveRefreshToken(
-                memberId, newRefreshToken, jwtProperties.getRefreshTokenExpiration()
+                empId, newRefreshToken, jwtProperties.getRefreshTokenExpiration()
         );
 
-        log.info("토큰 재발급 성공: memberId={}", memberId);
+        log.info("토큰 재발급 성공: empId={}", empId);
         return new TokenResponse(newAccessToken, newRefreshToken);
     }
 }

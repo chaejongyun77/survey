@@ -33,7 +33,7 @@ public class AuditorAwareImpl implements AuditorAware<String> {
 
         // UserPrincipal에서 loginId 추출
         if (authentication.getPrincipal() instanceof UserPrincipal UserPrincipal) {
-            return Optional.of(UserPrincipal.getLoginId());
+            return Optional.of(UserPrincipal.getEmpNo());
         }
 
         return Optional.of("UNKNOWN");

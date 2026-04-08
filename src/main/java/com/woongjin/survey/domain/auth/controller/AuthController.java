@@ -91,7 +91,7 @@ public class AuthController {
                          HttpServletResponse response) {
 
         if (userPrincipal != null) {
-            authService.logout(userPrincipal.getMemberId());
+            authService.logout(userPrincipal.getEmpId());
         }
 
         CookieUtil.deleteCookie(response, ACCESS_TOKEN_COOKIE);

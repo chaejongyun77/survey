@@ -7,6 +7,8 @@ import com.woongjin.survey.domain.employee.domain.enums.Position;
 import com.woongjin.survey.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -16,7 +18,9 @@ import java.time.LocalDate;
  * 직원 엔티티 - EMPLOYEE 테이블 매핑
  */
 @Getter
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "employee")
 public class Employee extends BaseEntity {

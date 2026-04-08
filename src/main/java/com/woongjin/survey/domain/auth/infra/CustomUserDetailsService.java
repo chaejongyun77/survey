@@ -1,7 +1,8 @@
 package com.woongjin.survey.domain.auth.infra;
 
-import com.woongjin.survey.domain.member.domain.Member;
-import com.woongjin.survey.domain.member.repository.MemberRepository;
+import com.woongjin.survey.domain.employee.domain.Employee;
+import com.woongjin.survey.domain.employee.domain.enums.EmployeeStatus;
+import com.woongjin.survey.domain.employee.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,20 +22,19 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
-    private final MemberRepository memberRepository;
+    private final EmployeeRepository employeeRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String loginId) throws UsernameNotFoundException {
-        Member member = memberRepository.findByLoginIdAndStatus(loginId, "ACTIVE")
-                .orElseThrow(() -> new UsernameNotFoundException(
-                        "존재하지 않거나 비활성화된 계정입니다: " + loginId));
+    public UserDetails loadUserByUsername(String empNo) throws UsernameNotFoundException {
+        Employee employee = employeeRepository.findByEmpNoAndStatus(empNo, EmployeeStatus.ACTIVE)
+                .orElseThrow(() -> new UsernameNotFoundException("존재하지 않거나 비활성화된 계정입니다: " + empNo));
 
         return new UserPrincipal(
-                member.getMemberId(),
-                member.getLoginId(),
-                member.getPassword(),
-                member.getName(),
-                List.of(new SimpleGrantedAuthority(member.getRole()))
+                employee.getId(),
+                employee.getEmpNo(),
+                employee.getPassword(),
+                employee.getEmpName(),
+                List.of(new SimpleGrantedAuthority(employee.getRole().name()))
         );
     }
 }
