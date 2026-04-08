@@ -47,11 +47,6 @@ public class SecurityConfig {
             // 1) CSRF 비활성화 — JWT는 쿠키 기반이 아닌 토큰 기반이라 CSRF 불필요
             .csrf(csrf -> csrf.disable())
 
-            // 2) H2 콘솔 iframe 허용 (로컬 개발용)
-            .headers(headers -> headers
-                .frameOptions(frame -> frame.sameOrigin())
-            )
-
             // 3) 세션 사용 안 함 — JWT로 매 요청마다 인증하니까 서버에 세션 저장 불필요
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
@@ -62,8 +57,6 @@ public class SecurityConfig {
                 // 인증 없이 접근 가능한 경로
                 .requestMatchers(
                     "/auth/login",      // 로그인 페이지
-                    "/auth/logout",     // 로그아웃 처리
-                    "/h2-console/**",   // H2 콘솔 (로컬 개발용)
                     "/css/**",          // 정적 리소스
                     "/js/**",
                     "/images/**"

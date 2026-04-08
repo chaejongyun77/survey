@@ -45,14 +45,15 @@ public class JwtTokenProvider {
      * Access Token 생성
      * - Claims: memberId, loginId, role
      */
-    public String generateAccessToken(Long memberId, String loginId, String role) {
+    public String generateAccessToken(Long memberId, String empNo, String role,String name) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtProperties.getAccessTokenExpiration());
 
         return Jwts.builder()
                 .subject(String.valueOf(memberId))
-                .claim("loginId", loginId)
+                .claim("empNo", empNo)
                 .claim("role", role)
+                .claim("name",name)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(secretKey)
@@ -115,6 +116,7 @@ public class JwtTokenProvider {
                 loginId,
                 "",  // 비밀번호는 토큰 인증 시 불필요
                 "",  // 이름은 필요 시 DB 조회
+                true,
                 List.of(new SimpleGrantedAuthority(role))
         );
 

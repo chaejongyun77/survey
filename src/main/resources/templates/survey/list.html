@@ -22,7 +22,7 @@
     </tr>
     </thead>
     <tbody>
-    <tr th:each="survey : ${surveys}">
+    <tr th:each="survey : ${surveys ?: {}}">
         <td th:text="${survey.surveyId}"></td>
         <td>
             <a th:href="@{/surveys/{id}(id=${survey.surveyId})}" th:text="${survey.title}"></a>
@@ -35,7 +35,7 @@
             <button th:onclick="|deleteSurvey(${survey.surveyId})|">삭제</button>
         </td>
     </tr>
-    <tr th:if="${#lists.isEmpty(surveys)}">
+    <tr th:if="${surveys == null or #lists.isEmpty(surveys)}">
         <td colspan="6">등록된 설문이 없습니다.</td>
     </tr>
     </tbody>

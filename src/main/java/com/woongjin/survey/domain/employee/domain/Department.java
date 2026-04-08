@@ -22,31 +22,24 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 @Entity
-@Table(name = "department")
+@Table(name = "dept_tb")
 public class Department extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "dept_id")
+    @Column(name = "DEPT_ID") // 컬럼명 수정
     private Long id;
 
-    @NotNull
-    @Column(name = "dept_name", nullable = false, length = 50)
+    @Column(name = "DEPT_NM", nullable = false, length = 20) // 컬럼명 및 길이 수정 (varchar(20))
     private String deptName;
 
-    /**
-     * 상위 부서 (Self-referencing FK)
-     * - 최상위 부서는 null
-     * - LAZY: 부서 조회 시 상위 부서를 매번 JOIN하지 않도록
-     */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_dept_id")
+    @JoinColumn(name = "UP_DEPT_ID", nullable = false) // 컬럼명 수정
     private Department parent;
 
     @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY)
     private List<Department> children = new ArrayList<>();
 
-    @NotNull
-    @Column(name = "depth")
+    @Column(name = "DEPT_LVL", nullable = false) // 컬럼명 수정
     private Integer depth;
 }

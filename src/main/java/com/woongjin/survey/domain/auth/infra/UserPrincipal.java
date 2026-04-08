@@ -25,14 +25,11 @@ public class UserPrincipal extends User {
     private final String empName;
 
     public UserPrincipal(Long empId, String empNo, String password,
-                         String empName, Collection<? extends GrantedAuthority> authorities) {
-        super(empNo, password, authorities);
+                         String empName, Boolean empStatus, Collection<? extends GrantedAuthority> authorities) {
+        super(empNo, password, empStatus, true, true, true, authorities);
         this.empId   = empId;
         this.empName = empName;
     }
 
-    /** empNo — Spring Security의 username 필드에 저장 */
-    public String getEmpNo() {
-        return getUsername();
-    }
+
 }

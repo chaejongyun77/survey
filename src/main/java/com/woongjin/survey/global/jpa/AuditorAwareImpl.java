@@ -19,23 +19,27 @@ import java.util.Optional;
  * → SecurityContext에서 로그인한 사용자의 loginId를 꺼내서 반환
  */
 @Component
-public class AuditorAwareImpl implements AuditorAware<String> {
+public class AuditorAwareImpl implements AuditorAware<Long> {
 
     @Override
-    public Optional<String> getCurrentAuditor() {
+    public Optional<Long> getCurrentAuditor() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        // 인증 정보가 없거나 익명 사용자인 경우
         if (authentication == null || !authentication.isAuthenticated()
                 || "anonymousUser".equals(authentication.getPrincipal())) {
-            return Optional.of("UNKNOWN");
+            return Optional.empty();
         }
 
-        // UserPrincipal에서 loginId 추출
-        if (authentication.getPrincipal() instanceof UserPrincipal UserPrincipal) {
-            return Optional.of(UserPrincipal.getEmpNo());
+        // DataInitializer 등 시스템 작업 시 "system" principal 사용 → 0L 반환
+        if ("system".equals(authentication.getPrincipal())) {
+            return Optional.of(0L);
         }
 
-        return Optional.of("UNKNOWN");
+        // UserPrincipal에서 empId 추출
+        if (authentication.getPrincipal() instanceof UserPrincipal userPrincipal) {
+            return Optional.of(userPrincipal.getEmpId());
+        }
+
+        return Optional.empty();
     }
 }

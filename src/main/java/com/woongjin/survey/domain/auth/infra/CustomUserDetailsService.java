@@ -1,7 +1,6 @@
 package com.woongjin.survey.domain.auth.infra;
 
 import com.woongjin.survey.domain.employee.domain.Employee;
-import com.woongjin.survey.domain.employee.domain.enums.EmployeeStatus;
 import com.woongjin.survey.domain.employee.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -26,14 +25,15 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String empNo) throws UsernameNotFoundException {
-        Employee employee = employeeRepository.findByEmpNoAndStatus(empNo, EmployeeStatus.ACTIVE)
-                .orElseThrow(() -> new UsernameNotFoundException("존재하지 않거나 비활성화된 계정입니다: " + empNo));
+        Employee employee = employeeRepository.findByEmpNo(empNo)
+                .orElseThrow(() -> new UsernameNotFoundException("등록되지 않은 아이디입니다."));
 
         return new UserPrincipal(
                 employee.getId(),
                 employee.getEmpNo(),
-                employee.getPassword(),
+                employee.getEmpPw(),
                 employee.getEmpName(),
+                employee.getEmpStatus(),
                 List.of(new SimpleGrantedAuthority(employee.getRole().name()))
         );
     }

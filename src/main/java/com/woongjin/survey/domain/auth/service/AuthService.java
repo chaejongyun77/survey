@@ -15,7 +15,9 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 인증 관련 비즈니스 로직
@@ -50,26 +52,23 @@ public class AuthService {
      */
     public TokenResponse login(String empNo, String password) {
         // 1~2) ID/PW 검증 (내부에서 CustomUserDetailsService.loadUserByUsername 호출)
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(empNo, password)
-        );
+        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(empNo, password));
 
         // 3) 검증 성공 → UserPrincipal 꺼내기
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
         Long empId = principal.getEmpId();
+        String empName = principal.getEmpName();
         String role = principal.getAuthorities().stream()
                 .findFirst()
                 .map(GrantedAuthority::getAuthority)
                 .orElse("ROLE_USER");
 
         // 4) 토큰 생성
-        String accessToken  = jwtTokenProvider.generateAccessToken(empId, empNo, role);
+        String accessToken  = jwtTokenProvider.generateAccessToken(empId, empNo, role, empName);
         String refreshToken = jwtTokenProvider.generateRefreshToken(empId);
 
         // 5) Redis에 Refresh Token 저장
-        redisTokenRepository.saveRefreshToken(
-                empId, refreshToken, jwtProperties.getRefreshTokenExpiration()
-        );
+        redisTokenRepository.saveRefreshToken(empId, refreshToken, jwtProperties.getRefreshTokenExpiration());
 
         log.info("로그인 성공: empId={}, empNo={}", empId, empNo);
         return new TokenResponse(accessToken, refreshToken);
@@ -99,10 +98,8 @@ public class AuthService {
      * 4) 새 Access Token + 새 Refresh Token 발급
      * 5) Redis에 새 Refresh Token 저장 (기존 것 교체)
      *
-     * @param refreshToken 클라이언트가 보낸 Refresh Token
-     * @return 새 Access Token + 새 Refresh Token
-     * @throws JwtAuthException 토큰 만료/위변조 또는 Redis 값과 불일치 시
      */
+    @Transactional(readOnly = true)
     public TokenResponse reissue(String refreshToken) {
         // 1) 검증 + empId 추출 (실패 시 JwtAuthException throw → GlobalExceptionHandler 처리)
         Long empId = Long.valueOf(jwtTokenProvider.getClaims(refreshToken).getSubject());
@@ -120,12 +117,12 @@ public class AuthService {
         }
 
         // 3) DB에서 최신 직원 정보 조회
-        Employee employee = employeeRepository.findByIdAndStatus(empId, EmployeeStatus.ACTIVE)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 직원입니다."));
+        Employee employee = employeeRepository.findById(empId)
+                .orElseThrow(() -> new UsernameNotFoundException("등록되지 않은 아이디입니다."));
 
         // 4) 새 토큰 생성
         String newAccessToken  = jwtTokenProvider.generateAccessToken(
-                empId, employee.getEmpNo(), employee.getRole().name()
+                empId, employee.getEmpNo(), employee.getRole().name(),employee.getEmpName()
         );
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(empId);
 

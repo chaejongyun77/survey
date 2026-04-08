@@ -30,19 +30,21 @@ public abstract class BaseEntity {
 
     /** 생성자 — 엔티티 최초 저장 시 로그인한 사용자 ID 자동 세팅 */
     @CreatedBy
-    @Column(updatable = false)
-    private String createdBy;
+    @Column(name = "FRST_CRTN_ID", updatable = false)
+    private Long createdBy;
 
     /** 생성일 — 엔티티 최초 저장 시 현재 시간 자동 세팅 */
     @CreatedDate
-    @Column(updatable = false)
+    @Column(name = "FRST_CRTN_DT", updatable = false)
     private LocalDateTime createdDate;
 
     /** 수정자 — 엔티티 수정 시 로그인한 사용자 ID 자동 세팅 */
     @LastModifiedBy
-    private String lastModifiedBy;
+    @Column(name = "LAST_UPDT_ID")
+    private Long lastModifiedBy;
 
     /** 수정일 — 엔티티 수정 시 현재 시간 자동 세팅 */
     @LastModifiedDate
+    @Column(name = "LAST_UPDT_DT")
     private LocalDateTime lastModifiedDate;
 }
