@@ -32,6 +32,14 @@
          th:text="${logoutMsg}">
     </div>
 
+    <script>
+        // 에러/로그아웃 메시지 표시 후 URL에서 쿼리 파라미터 제거
+        // → 새로고침해도 메시지가 다시 뜨지 않음
+        if (window.location.search) {
+            history.replaceState(null, '', window.location.pathname);
+        }
+    </script>
+
     <!--
         POST /auth/login 은 AuthController가 직접 처리
         → AuthService.login() → 토큰 발급 → 쿠키 세팅 → /surveys 리다이렉트

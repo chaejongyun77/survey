@@ -61,8 +61,7 @@ public class AuthController {
     @PostMapping("/login")
     public String login(@RequestParam String loginId,
                         @RequestParam String password,
-                        HttpServletResponse response,
-                        Model model) {
+                        HttpServletResponse response) {
         try {
             TokenResponse tokens = authService.login(loginId, password);
 
@@ -73,8 +72,7 @@ public class AuthController {
 
         } catch (Exception e) {
             log.warn("로그인 실패: loginId={}, reason={}", loginId, e.getMessage());
-            model.addAttribute("errorMsg", "아이디 또는 비밀번호가 올바르지 않습니다.");
-            return "auth/login";
+            return "redirect:/auth/login?error=true";
         }
     }
 
