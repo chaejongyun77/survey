@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woongjin.survey.global.response.ApiResponse;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
+import com.woongjin.survey.global.cookie.CookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -91,13 +91,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      */
     private String resolveToken(HttpServletRequest request) {
         // 쿠키에서 먼저 확인
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if (ACCESS_TOKEN_COOKIE.equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
+        String cookieToken = CookieUtil.extract(request, ACCESS_TOKEN_COOKIE);
+        if (cookieToken != null) {
+            return cookieToken;
         }
 
         // 쿠키에 없으면 Authorization 헤더 확인

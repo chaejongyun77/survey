@@ -24,4 +24,14 @@ public class JwtProperties {
 
     /** Refresh Token 만료 시간 (ms) - 기본 7일 */
     private long refreshTokenExpiration;
+
+    /** Access Token 쿠키 만료 시간 (초) */
+    public int getAccessExpiration() {
+        return (int) (accessTokenExpiration / 1000);
+    }
+
+    /** Refresh Token 쿠키 만료 시간 (초) */
+    public int getRefreshExpiration() {
+        return (int) (refreshTokenExpiration / 1000);
+    }
 }

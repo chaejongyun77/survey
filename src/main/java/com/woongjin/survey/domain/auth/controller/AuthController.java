@@ -3,7 +3,8 @@ package com.woongjin.survey.domain.auth.controller;
 import com.woongjin.survey.domain.auth.service.AuthService;
 import com.woongjin.survey.domain.auth.service.TokenResponse;
 import com.woongjin.survey.domain.auth.infra.UserPrincipal;
-import jakarta.servlet.http.Cookie;
+import com.woongjin.survey.global.cookie.CookieUtil;
+import com.woongjin.survey.global.jwt.JwtProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -30,8 +31,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtProperties jwtProperties;
 
-    private static final String ACCESS_TOKEN_COOKIE = "ACCESS_TOKEN";
+    private static final String ACCESS_TOKEN_COOKIE  = "ACCESS_TOKEN";
     private static final String REFRESH_TOKEN_COOKIE = "REFRESH_TOKEN";
 
     /**
@@ -39,16 +41,12 @@ public class AuthController {
      */
     @GetMapping("/login")
     public String loginPage(
-            @RequestParam(value = "error", required = false) String error,
+            @RequestParam(value = "error",  required = false) String error,
             @RequestParam(value = "logout", required = false) String logout,
             Model model) {
 
-        if (error != null) {
-            model.addAttribute("errorMsg", "아이디 또는 비밀번호가 올바르지 않습니다.");
-        }
-        if (logout != null) {
-            model.addAttribute("logoutMsg", "로그아웃 되었습니다.");
-        }
+        if (error  != null) model.addAttribute("errorMsg",  "아이디 또는 비밀번호가 올바르지 않습니다.");
+        if (logout != null) model.addAttribute("logoutMsg", "로그아웃 되었습니다.");
         return "auth/login";
     }
 
@@ -57,9 +55,8 @@ public class AuthController {
      *
      * 흐름:
      * 1) AuthService.login()으로 ID/PW 검증 + 토큰 발급
-     * 2) Access Token → httpOnly 쿠키에 세팅
-     * 3) Refresh Token → httpOnly 쿠키에 세팅
-     * 4) /surveys로 리다이렉트
+     * 2) Access Token, Refresh Token → httpOnly 쿠키에 세팅
+     * 3) /surveys 로 리다이렉트
      */
     @PostMapping("/login")
     public String login(@RequestParam String loginId,
@@ -67,16 +64,11 @@ public class AuthController {
                         HttpServletResponse response,
                         Model model) {
         try {
-            // 1) 로그인 검증 + 토큰 발급
             TokenResponse tokens = authService.login(loginId, password);
 
-            // 2) Access Token 쿠키 세팅
-            addCookie(response, ACCESS_TOKEN_COOKIE, tokens.accessToken(), -1);
+            CookieUtil.addCookie(response, ACCESS_TOKEN_COOKIE,  tokens.accessToken(),  jwtProperties.getAccessExpiration());
+            CookieUtil.addCookie(response, REFRESH_TOKEN_COOKIE, tokens.refreshToken(), jwtProperties.getRefreshExpiration());
 
-            // 3) Refresh Token 쿠키 세팅
-            addCookie(response, REFRESH_TOKEN_COOKIE, tokens.refreshToken(), -1);
-
-            // 4) 로그인 성공 → 설문 목록으로 이동
             return "redirect:/surveys";
 
         } catch (Exception e) {
@@ -91,23 +83,20 @@ public class AuthController {
      *
      * 흐름:
      * 1) AuthService.logout()으로 Redis에서 Refresh Token 삭제
-     * 2) Access Token, Refresh Token 쿠키 삭제
+     * 2) 쿠키 삭제
      * 3) 로그인 페이지로 리다이렉트
      */
     @PostMapping("/logout")
-    public String logout(@AuthenticationPrincipal UserPrincipal UserPrincipal,
+    public String logout(@AuthenticationPrincipal UserPrincipal userPrincipal,
                          HttpServletResponse response) {
 
-        if (UserPrincipal != null) {
-            // 1) Redis에서 Refresh Token 삭제
-            authService.logout(UserPrincipal.getMemberId());
+        if (userPrincipal != null) {
+            authService.logout(userPrincipal.getMemberId());
         }
 
-        // 2) 쿠키 삭제 (maxAge=0 → 브라우저가 즉시 삭제)
-        addCookie(response, ACCESS_TOKEN_COOKIE, null, 0);
-        addCookie(response, REFRESH_TOKEN_COOKIE, null, 0);
+        CookieUtil.deleteCookie(response, ACCESS_TOKEN_COOKIE);
+        CookieUtil.deleteCookie(response, REFRESH_TOKEN_COOKIE);
 
-        // 3) 로그인 페이지로
         return "redirect:/auth/login?logout=true";
     }
 
@@ -118,67 +107,30 @@ public class AuthController {
      * 1) 쿠키에서 Refresh Token 추출
      * 2) AuthService.reissue()로 새 토큰 발급
      * 3) 새 토큰을 쿠키에 세팅
-     * 4) 원래 페이지로 리다이렉트
+     * 4) 이전 페이지로 리다이렉트
      */
     @PostMapping("/reissue")
-    public String reissue(HttpServletRequest request,
-                          HttpServletResponse response) {
+    public String reissue(HttpServletRequest request, HttpServletResponse response) {
         try {
-            // 1) 쿠키에서 Refresh Token 추출
-            String refreshToken = extractCookie(request, REFRESH_TOKEN_COOKIE);
+            String refreshToken = CookieUtil.extract(request, REFRESH_TOKEN_COOKIE);
 
             if (refreshToken == null) {
                 return "redirect:/auth/login";
             }
 
-            // 2) 새 토큰 발급
             TokenResponse tokens = authService.reissue(refreshToken);
 
-            // 3) 새 토큰 쿠키 세팅
-            addCookie(response, ACCESS_TOKEN_COOKIE, tokens.accessToken(), -1);
-            addCookie(response, REFRESH_TOKEN_COOKIE, tokens.refreshToken(), -1);
+            CookieUtil.addCookie(response, ACCESS_TOKEN_COOKIE,  tokens.accessToken(),  jwtProperties.getAccessExpiration());
+            CookieUtil.addCookie(response, REFRESH_TOKEN_COOKIE, tokens.refreshToken(), jwtProperties.getRefreshExpiration());
 
-            // 4) 이전 페이지로 (없으면 메인)
             String referer = request.getHeader("Referer");
             return "redirect:" + (referer != null ? referer : "/surveys");
 
         } catch (Exception e) {
             log.warn("토큰 재발급 실패: {}", e.getMessage());
-            // 재발급 실패 → 다시 로그인
-            addCookie(response, ACCESS_TOKEN_COOKIE, null, 0);
-            addCookie(response, REFRESH_TOKEN_COOKIE, null, 0);
+            CookieUtil.deleteCookie(response, ACCESS_TOKEN_COOKIE);
+            CookieUtil.deleteCookie(response, REFRESH_TOKEN_COOKIE);
             return "redirect:/auth/login";
         }
-    }
-
-    // =============================================
-    // 쿠키 유틸리티 메서드
-    // =============================================
-
-    /**
-     * httpOnly 쿠키 추가
-     * @param maxAge -1이면 브라우저 종료 시 삭제 (세션 쿠키), 0이면 즉시 삭제
-     */
-    private void addCookie(HttpServletResponse response, String name, String value, int maxAge) {
-        Cookie cookie = new Cookie(name, value);
-        cookie.setHttpOnly(true);   // JS에서 접근 불가 (XSS 방어)
-        cookie.setPath("/");        // 모든 경로에서 전송
-        cookie.setMaxAge(maxAge);
-        response.addCookie(cookie);
-    }
-
-    /**
-     * 요청에서 특정 이름의 쿠키 값 추출
-     */
-    private String extractCookie(HttpServletRequest request, String name) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if (name.equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
-        }
-        return null;
     }
 }
