@@ -1,6 +1,7 @@
 package com.woongjin.survey.domain.auth.service;
 
 import com.woongjin.survey.domain.employee.domain.Employee;
+import com.woongjin.survey.domain.employee.domain.enums.EmployeeRole;
 import com.woongjin.survey.domain.employee.domain.enums.EmployeeStatus;
 import com.woongjin.survey.domain.employee.repository.EmployeeRepository;
 import com.woongjin.survey.domain.auth.infra.UserPrincipal;
@@ -61,7 +62,7 @@ public class AuthService {
         String role = principal.getAuthorities().stream()
                 .findFirst()
                 .map(GrantedAuthority::getAuthority)
-                .orElse("ROLE_USER");
+                .orElse(EmployeeRole.USER.name());
 
         // 4) 토큰 생성
         String accessToken  = jwtTokenProvider.generateAccessToken(empId, empNo, role, empName);
