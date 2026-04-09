@@ -107,13 +107,13 @@ public class JwtTokenProvider {
     public Authentication getAuthentication(String token) {
         Claims claims = getClaims(token);
 
-        Long memberId = Long.valueOf(claims.getSubject());
-        String loginId = claims.get("loginId", String.class);
+        Long empId = Long.valueOf(claims.getSubject());
+        String empNo = claims.get("empNo", String.class);
         String role = claims.get("role", String.class);
 
         UserPrincipal userPrincipal = new UserPrincipal(
-                memberId,
-                loginId,
+                empId,
+                empNo,
                 "",  // 비밀번호는 토큰 인증 시 불필요
                 "",  // 이름은 필요 시 DB 조회
                 true,
