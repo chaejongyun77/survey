@@ -5,6 +5,7 @@ import com.woongjin.survey.domain.auth.service.AuthService;
 import com.woongjin.survey.domain.auth.service.TokenResponse;
 import com.woongjin.survey.domain.auth.infra.UserPrincipal;
 import com.woongjin.survey.global.cookie.CookieUtil;
+import com.woongjin.survey.global.jwt.JwtAuthException;
 import com.woongjin.survey.global.jwt.JwtProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -113,8 +114,7 @@ public class AuthController {
             authService.logout(userPrincipal.getEmpId());
         }
 
-        CookieUtil.deleteCookie(response, ACCESS_TOKEN_COOKIE);
-        CookieUtil.deleteCookie(response, REFRESH_TOKEN_COOKIE);
+        clearCookies(response);
 
         return "redirect:/auth/login";
     }
@@ -145,11 +145,19 @@ public class AuthController {
             String referer = request.getHeader("Referer");
             return "redirect:" + (referer != null ? referer : "/surveys");
 
+        } catch (JwtAuthException e) {
+            log.warn("토큰 재발급 실패 [{}]: {}", e.getErrorCode(), e.getMessage());
+            clearCookies(response);
+            return "redirect:/auth/login";
         } catch (Exception e) {
-            log.warn("토큰 재발급 실패: {}", e.getMessage());
-            CookieUtil.deleteCookie(response, ACCESS_TOKEN_COOKIE);
-            CookieUtil.deleteCookie(response, REFRESH_TOKEN_COOKIE);
+            log.error("토큰 재발급 중 서버 오류", e);
+            clearCookies(response);
             return "redirect:/auth/login";
         }
+    }
+
+    private void clearCookies(HttpServletResponse response) {
+        CookieUtil.deleteCookie(response, ACCESS_TOKEN_COOKIE);
+        CookieUtil.deleteCookie(response, REFRESH_TOKEN_COOKIE);
     }
 }
