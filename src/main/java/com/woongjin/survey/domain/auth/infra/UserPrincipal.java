@@ -25,8 +25,8 @@ public class UserPrincipal extends User {
     private final String empName;
 
     public UserPrincipal(Long empId, String empNo, String password,
-                         String empName, Boolean empStatus, Collection<? extends GrantedAuthority> authorities) {
-        super(empNo, password, empStatus, true, true, true, authorities);
+                         String empName, Collection<? extends GrantedAuthority> authorities) {
+        super(empNo, password, authorities);
         this.empId   = empId;
         this.empName = empName;
     }

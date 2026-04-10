@@ -14,41 +14,17 @@
 
 <div class="bg-white w-[360px] px-10 py-12 rounded-lg shadow-md">
 
-    <!-- 헤더 -->
     <div class="text-center mb-8">
         <h1 class="text-[22px] font-bold text-primary">웅진씽크빅</h1>
         <p class="text-[13px] text-gray-400 mt-2">설문 관리 서비스</p>
     </div>
 
-    <!-- 에러 메시지 -->
-    <div th:if="${errorMsg}"
-         class="mb-4 px-4 py-2 rounded text-[13px] text-center bg-red-50 text-red-600 border border-red-200"
-         th:text="${errorMsg}">
+    <div id="error-message-container"
+         class="hidden mb-4 px-4 py-2 rounded text-[13px] text-center bg-red-50 text-red-600 border border-red-200">
     </div>
 
-    <script>
-        // 에러/로그아웃 메시지 표시 후 URL에서 쿼리 파라미터 제거
-        // → 새로고침해도 메시지가 다시 뜨지 않음
-        if (window.location.search) {
-            history.replaceState(null, '', window.location.pathname);
-        }
-    </script>
+    <form id="loginForm">
 
-    <script>
-        // 에러/로그아웃 메시지 표시 후 URL에서 쿼리 파라미터 제거
-        // → 새로고침해도 메시지가 다시 뜨지 않음
-        if (window.location.search) {
-            history.replaceState(null, '', window.location.pathname);
-        }
-    </script>
-
-    <!--
-        POST /auth/login 은 AuthController가 직접 처리
-        → AuthService.login() → 토큰 발급 → 쿠키 세팅 → /surveys 리다이렉트
-    -->
-    <form th:action="@{/auth/login}" method="post">
-
-        <!-- 아이디 -->
         <div class="mb-4">
             <label for="loginId" class="block text-[13px] text-gray-600 mb-1.5">아이디</label>
             <input type="text"
@@ -60,8 +36,8 @@
                    class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded focus:outline-none focus:border-primary">
         </div>
 
-        <!-- 비밀번호 -->
         <div class="mb-4">
+            <label for="password" class="block text-[13px] text-gray-600 mb-1.5">비밀번호</label>
             <input type="password"
                    id="password"
                    name="password"
@@ -71,7 +47,6 @@
                    class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded focus:outline-none focus:border-primary">
         </div>
 
-        <!-- 로그인 버튼 -->
         <button type="submit"
                 class="w-full mt-2 py-3 bg-primary hover:bg-primary-hover text-white text-[15px] font-semibold rounded transition-colors">
             로그인
@@ -79,6 +54,53 @@
 
     </form>
 </div>
+
+<script>
+    // URL에 남아있는 쿼리 파라미터(ex: ?error=...) 제거 (선택 사항)
+    if (window.location.search) {
+        history.replaceState(null, '', window.location.pathname);
+    }
+
+    // 로그인 폼 제출 이벤트 핸들링
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault(); // 폼의 기본 동작(페이지 새로고침) 방지
+
+        // 입력값 가져오기
+        const loginId = document.getElementById('loginId').value;
+        const password = document.getElementById('password').value;
+        const errorContainer = document.getElementById('error-message-container');
+
+        // 에러 컨테이너 초기화
+        errorContainer.classList.add('hidden');
+        errorContainer.textContent = '';
+
+        try {
+            // REST API 호출
+            const response = await fetch('/api/external/v1/admin/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json', // JSON 형식 명시
+                },
+                body: JSON.stringify({ loginId, password }) // DTO 규격에 맞게 JSON 생성
+            });
+
+            const result = await response.json(); // ApiResponse 포맷의 응답 데이터 파싱
+            if (response.ok && result.success) {
+                // 로그인 성공 시 /surveys 페이지로 이동
+                window.location.href = '/surveys';
+            } else {
+                // 로그인 실패 (401, 403 등) - 에러 메시지 표시
+                errorContainer.textContent = result.message; // ApiResponse의 message 속성
+                errorContainer.classList.remove('hidden');
+            }
+        } catch (error) {
+            // 네트워크 오류 등 예기치 못한 에러 처리
+            console.error('로그인 통신 중 오류:', error);
+            errorContainer.textContent = '서버와 통신 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+            errorContainer.classList.remove('hidden');
+        }
+    });
+</script>
 
 </body>
 </html>

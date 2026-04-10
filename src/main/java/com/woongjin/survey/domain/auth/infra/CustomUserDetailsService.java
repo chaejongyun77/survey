@@ -33,7 +33,6 @@ public class CustomUserDetailsService implements UserDetailsService {
                 employee.getEmpNo(),
                 employee.getEmpPw(),
                 employee.getEmpName(),
-                employee.getEmpStatus(),
                 List.of(new SimpleGrantedAuthority(employee.getRole().name()))
         );
     }

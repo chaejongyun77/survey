@@ -116,7 +116,6 @@ public class JwtTokenProvider {
                 empNo,
                 "",  // 비밀번호는 토큰 인증 시 불필요
                 "",  // 이름은 필요 시 DB 조회
-                true,
                 List.of(new SimpleGrantedAuthority(role))
         );
 

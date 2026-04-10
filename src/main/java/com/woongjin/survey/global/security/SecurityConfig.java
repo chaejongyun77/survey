@@ -61,6 +61,7 @@ public class SecurityConfig {
                     "/js/**",
                     "/images/**"
                 ).permitAll()
+                    .requestMatchers("/auth/login", "/api/external/v1/admin/auth/**").permitAll()
                 // 나머지 모든 요청은 인증 필요
                 .anyRequest().authenticated()
             )

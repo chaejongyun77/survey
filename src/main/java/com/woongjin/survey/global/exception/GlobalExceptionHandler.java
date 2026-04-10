@@ -1,5 +1,6 @@
 package com.woongjin.survey.global.exception;
 
+import com.woongjin.survey.domain.auth.controller.AuthMessages;
 import com.woongjin.survey.global.jwt.JwtAuthException;
 import com.woongjin.survey.global.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -20,62 +21,65 @@ import java.util.stream.Collectors;
  * - 필터(JwtAuthenticationFilter)에서 발생: 여기까지 도달하지 않음 → 필터에서 직접 처리
  * - 서비스(AuthService 등)에서 발생: 여기서 처리
  */
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.stream.Collectors;
+
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /** JWT 인증/검증 예외 (서비스 레이어에서 throw된 경우) */
-    @ExceptionHandler(JwtAuthException.class)
-    public ResponseEntity<ApiResponse<Void>> handleJwtAuthException(JwtAuthException e) {
-        log.warn("JwtAuthException [{}]: {}", e.getErrorCode().name(), e.getMessage());
-        return ResponseEntity
-                .status(e.getErrorCode().getStatus())
-                .body(ApiResponse.error(e.getMessage()));
-    }
-
-    /** 비즈니스 예외 (404 수준) */
-    @ExceptionHandler(CustomException.class)
-    public ResponseEntity<ApiResponse<Void>> handleCustomException(CustomException e) {
-        log.warn("CustomException: {}", e.getMessage());
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.error(e.getMessage()));
-    }
-
-    /** Validation 예외 */
+    /** 데이터 유효성 검사 예외 (400) */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e) {
-        String message = e.getBindingResult().getFieldErrors()
-                .stream()
-                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+    public ApiResponse<Void> handleValidation(MethodArgumentNotValidException e) {
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .map(fieldError -> fieldError.getDefaultMessage())
                 .collect(Collectors.joining(", "));
-        log.warn("ValidationException: {}", message);
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(message));
+
+        // ApiResponse에 badRequest() 메서드가 있다고 가정 (또는 error(message) 사용 가능)
+        return ApiResponse.error(message);
     }
 
-    /**
-     * Spring Security 예외는 여기서 잡지 않고 Security가 직접 처리하도록 다시 던짐
-     * - AuthenticationException: 미인증 → /auth/login 으로 redirect
-     * - AccessDeniedException:   권한 없음 → 403
-     */
-    @ExceptionHandler(AuthenticationException.class)
-    public void handleAuthenticationException(AuthenticationException e) throws AuthenticationException {
-        throw e;
+    /** 인증 정보 불일치 예외 (401) - 아이디/비밀번호 틀림 */
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class,DisabledException.class})
+    public ApiResponse<Void> handleLoginFailure(Exception e) {
+        log.warn("로그인 정보 불일치: {}", e.getMessage());
+        return ApiResponse.error(AuthMessages.INVALID_LOGIN);
     }
 
-    @ExceptionHandler(AccessDeniedException.class)
-    public void handleAccessDeniedException(AccessDeniedException e) throws AccessDeniedException {
-        throw e;
+    /** JWT 인증 예외 (동적 상태 코드) */
+    @ExceptionHandler(JwtAuthException.class)
+    public ApiResponse<Void> handleJwtAuthException(JwtAuthException e, HttpServletResponse response) {
+        log.warn("JwtAuthException [{}]: {}", e.getErrorCode().name(), e.getMessage());
+        // Custom ErrorCode의 동적 상태값을 세팅
+        response.setStatus(e.getErrorCode().getStatus().value());
+        return ApiResponse.error(e.getMessage());
     }
 
-    /** 그 외 예외 */
+    /** 비즈니스 커스텀 예외 (404 예시) */
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(CustomException.class)
+    public ApiResponse<Void> handleCustomException(CustomException e) {
+        log.warn("CustomException: {}", e.getMessage());
+        return ApiResponse.error(e.getMessage());
+    }
+
+    /** 그 외 모든 예외 (500) */
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
+    public ApiResponse<Void> handleException(Exception e) {
         log.error("UnhandledException: ", e);
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("서버 오류가 발생했습니다."));
+        return ApiResponse.error("서버 오류가 발생했습니다.");
     }
 }
