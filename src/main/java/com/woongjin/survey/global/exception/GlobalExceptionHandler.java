@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -52,7 +53,7 @@ public class GlobalExceptionHandler {
 
     /** 인증 정보 불일치 예외 (401) - 아이디/비밀번호 틀림 */
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class,DisabledException.class})
+    @ExceptionHandler({AuthenticationException.class})
     public ApiResponse<Void> handleLoginFailure(Exception e) {
         log.warn("로그인 정보 불일치: {}", e.getMessage());
         return ApiResponse.error(AuthMessages.INVALID_LOGIN);

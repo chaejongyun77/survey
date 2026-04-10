@@ -1,14 +1,18 @@
 package com.woongjin.survey.domain.auth.infra;
 
 import com.woongjin.survey.domain.employee.domain.Employee;
+import com.woongjin.survey.domain.employee.domain.enums.EmployeeRole;
 import com.woongjin.survey.domain.employee.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import javax.management.relation.Role;
 import java.util.List;
 
 /**
@@ -27,6 +31,17 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String empNo) throws UsernameNotFoundException {
         Employee employee = employeeRepository.findByEmpNo(empNo)
                 .orElseThrow(() -> new UsernameNotFoundException("등록되지 않은 아이디입니다."));
+
+        // 2. 퇴사자 체크 (401 계열)
+        if (!employee.getEmpStatus()) {
+            throw new DisabledException("EMP_STATUS_FALSE");
+        }
+
+        // 3. 권한 체크 (401 계열)
+        if (employee.getRole() == EmployeeRole.USER) {
+            // 일반 유저는 관리자 자격이 없으므로 '자격 미달' 예외 발생
+            throw new InsufficientAuthenticationException("ROLE_USER_NOT_ALLOWED") ;
+        }
 
         return new UserPrincipal(
                 employee.getId(),
