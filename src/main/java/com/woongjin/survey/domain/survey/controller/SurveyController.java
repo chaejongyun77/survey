@@ -23,4 +23,9 @@ public class SurveyController {
         model.addAttribute("empName", principal.getEmpName());
         return "survey/list";
     }
+
+    @GetMapping("/intro")
+    public String intro() {
+        return "survey/intro";
+    }
 }

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>설문 인트로</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-transparent font-sans antialiased m-0 p-0 flex justify-center items-center min-h-screen">
+
+<article class="w-full max-w-3xl mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 flex flex-col p-6 md:p-8 m-4 max-h-[90vh] overflow-y-auto">
+
+    <header class="mb-6">
+      <span class="inline-flex items-center px-3 py-1.5 rounded-md text-[12px] font-bold bg-[#FFF2EB] text-[#FF6A00] mb-4">
+        진행중
+      </span>
+        <h1 class="text-2xl font-bold text-gray-900 leading-snug tracking-tight">
+            2026년 상반기 고객 만족도 조사
+        </h1>
+    </header>
+
+    <div class="w-full aspect-[2/1] border border-gray-200 rounded-lg p-4 mb-8 flex justify-center items-center bg-white overflow-hidden">
+        <img th:src="@{/images/logo.png}" alt="웅진씽크빅 로고" class="max-h-full max-w-full object-contain" />
+    </div>
+
+    <hr class="border-t border-gray-100 mb-8" />
+
+    <dl class="space-y-4 text-base">
+        <div class="flex items-start">
+            <dt class="w-24 shrink-0 text-gray-500">설문 기간</dt>
+            <dd class="text-gray-800 font-medium">2026.03.18 ~ 2026.03.25</dd>
+        </div>
+        <div class="flex items-start">
+            <dt class="w-24 shrink-0 text-gray-500">문항 수</dt>
+            <dd class="text-[#FF6A00] font-bold">총 12문항</dd>
+        </div>
+        <div class="flex items-start">
+            <dt class="w-24 shrink-0 text-gray-500">설문 대상</dt>
+            <dd class="text-gray-800 font-medium">임의 선택(200명)</dd>
+        </div>
+    </dl>
+
+    <footer class="mt-auto pt-10 flex gap-4">
+        <button id="btn-close" type="button" class="flex-1 py-4 bg-gray-100 text-gray-600 font-bold rounded-xl text-base transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300">
+            다음에 참여
+        </button>
+        <button id="btn-start" type="button" class="flex-[2] py-4 bg-[#FF6A00] text-white font-bold rounded-xl text-base transition-colors hover:bg-[#E55E00] focus:outline-none focus:ring-2 focus:ring-[#FF6A00] focus:ring-offset-2">
+            참여하기
+        </button>
+    </footer>
+</article>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('userId');
+
+    document.getElementById('btn-close').addEventListener('click', function() {
+        window.parent.postMessage({ action: 'CLOSE_SURVEY_MODAL', userId: userId }, '*');
+    });
+
+    document.getElementById('btn-start').addEventListener('click', function() {
+        if (!userId) {
+            alert('사용자 정보(userId)를 확인할 수 없습니다.');
+            return;
+        }
+        window.parent.postMessage({ action: 'START_SURVEY', userId: userId }, '*');
+        alert(`[테스트] ${userId}님의 설문을 시작합니다!`);
+    });
+</script>
+</body>
+</html>
