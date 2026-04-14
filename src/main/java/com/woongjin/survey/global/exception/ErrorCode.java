@@ -13,8 +13,12 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum ErrorCode {
 
+    // ── 사원 ──────────────────────────────────────────
+    EMPLOYEE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 사원입니다."),
+
     // ── 설문 ──────────────────────────────────────────
     SURVEY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 설문입니다."),
+    SURVEY_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "유효하지 않은 접근입니다."),
     SURVEY_DISABLED(HttpStatus.FORBIDDEN, "설문에 참여할 수 없습니다."),
     SURVEY_PERIOD_ENDED(HttpStatus.FORBIDDEN, "설문 기간이 종료되었습니다."),
     SURVEY_NOT_TARGET(HttpStatus.FORBIDDEN, "설문 대상자가 아닙니다."),
