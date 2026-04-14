@@ -1,3 +1,4 @@
+/*
 package com.woongjin.survey.global.config;
 
 import com.woongjin.survey.domain.employee.domain.Department;
@@ -28,11 +29,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+*/
 /**
  * 앱 시작 시 초기 계정 자동 생성
  * - 계정 정보는 .env (local) 또는 OS 환경변수 (dev/prod)에서 주입
  * - 코드에 아이디/비밀번호가 노출되지 않음
- */
+ *//*
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -69,9 +72,11 @@ public class DataInitializer implements ApplicationRunner {
         }
     }
 
-    /**
+    */
+/**
      * JPA Auditing용 시스템 사용자를 SecurityContext에 임시 세팅
-     */
+     *//*
+
     private void setSystemSecurityContext() {
         UsernamePasswordAuthenticationToken systemAuth = new UsernamePasswordAuthenticationToken(
                 "system", null, List.of(new SimpleGrantedAuthority("ROLE_SYSTEM"))
@@ -106,11 +111,13 @@ public class DataInitializer implements ApplicationRunner {
         }
     }
 
-    /**
+    */
+/**
      * 설문 + 대상자 더미데이터 생성
      * - surveyId=1, userId=1~4 에 대응
      * - 이미 존재하면 skip
-     */
+     *//*
+
     private void createSurveyDummyData() {
         if (surveyRepository.count() > 0) {
             log.info("설문 더미데이터 이미 존재 — skip");
@@ -157,3 +164,4 @@ public class DataInitializer implements ApplicationRunner {
         log.info("설문 대상자 더미데이터 생성: {}명", employees.size());
     }
 }
+*/

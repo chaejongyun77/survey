@@ -15,8 +15,8 @@ public enum ErrorCode {
 
     // ── 설문 ──────────────────────────────────────────
     SURVEY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 설문입니다."),
-    SURVEY_DISABLED(HttpStatus.FORBIDDEN, "설문에 참여할 수 없습니다."),
-    SURVEY_PERIOD_ENDED(HttpStatus.FORBIDDEN, "설문 기간이 종료되었습니다."),
+    SURVEY_DISABLED(HttpStatus.NOT_FOUND, "존재하지 않는 설문입니다."),
+    SURVEY_PERIOD_ENDED(HttpStatus.BAD_REQUEST, "설문 기간이 종료되었습니다."),
     SURVEY_NOT_TARGET(HttpStatus.FORBIDDEN, "설문 대상자가 아닙니다."),
     SURVEY_ALREADY_DONE(HttpStatus.CONFLICT, "이미 참여한 설문입니다."),
     SURVEY_HAS_TEMP_SAVE(HttpStatus.OK, "임시저장된 설문이 있습니다.");
