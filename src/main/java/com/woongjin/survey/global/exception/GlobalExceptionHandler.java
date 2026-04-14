@@ -6,7 +6,6 @@ import com.woongjin.survey.global.response.ApiResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -17,7 +16,11 @@ import java.util.stream.Collectors;
 
 /**
  * 전역 예외 처리 핸들러
- * <p>
+ *
+ * [예외 분류]
+ * - 비즈니스 예외 (BusinessException): HTTP 200 + success:false
+ * - 시스템/인프라 예외: HTTP 4xx/5xx
+ *
  * [JwtAuthException 처리 범위]
  * - 필터(JwtAuthenticationFilter)에서 발생: 여기까지 도달하지 않음 → 필터에서 직접 처리
  * - 서비스(AuthService 등)에서 발생: 여기서 처리
@@ -25,6 +28,16 @@ import java.util.stream.Collectors;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    /**
+     * 비즈니스 예외 → HTTP 200 + success:false
+     */
+    @ResponseStatus(HttpStatus.OK)
+    @ExceptionHandler(BusinessException.class)
+    public ApiResponse<Void> handleBusinessException(BusinessException e) {
+        log.warn("BusinessException [{}]: {}", e.getErrorCode().name(), e.getMessage());
+        return ApiResponse.error(e.getMessage());
+    }
 
     /**
      * 데이터 유효성 검사 예외 (400)
@@ -56,18 +69,6 @@ public class GlobalExceptionHandler {
         log.warn("JwtAuthException [{}]: {}", e.getErrorCode().name(), e.getMessage());
         response.setStatus(e.getErrorCode().getStatus().value());
         return ApiResponse.error(e.getMessage());
-    }
-
-    /**
-     * 비즈니스 예외 (ErrorCode의 HTTP 상태코드 동적 반환)
-     * - ErrorCode에 정의된 status, message 그대로 사용
-     */
-    @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
-        log.warn("BusinessException [{}]: {}", e.getErrorCode().name(), e.getMessage());
-        return ResponseEntity
-                .status(e.getErrorCode().getStatus())
-                .body(ApiResponse.error(e.getMessage()));
     }
 
     /**

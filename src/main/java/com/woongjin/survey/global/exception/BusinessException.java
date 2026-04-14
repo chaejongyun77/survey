@@ -4,7 +4,8 @@ import lombok.Getter;
 
 /**
  * 비즈니스 로직 예외
- * - ErrorCode를 통해 HTTP 상태코드와 메시지를 함께 관리
+ * - ErrorCode 메시지를 그대로 사용
+ * - GlobalExceptionHandler에서 HTTP 200 + success:false 로 처리
  */
 @Getter
 public class BusinessException extends RuntimeException {

@@ -4,6 +4,8 @@ import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.woongjin.survey.domain.survey.domain.QSurvey;
 import com.woongjin.survey.domain.survey.domain.QSurveyTargetPerson;
+import com.woongjin.survey.domain.survey.domain.SurveyParticipateStatus;
+import com.woongjin.survey.domain.survey.domain.enums.SurveyStatus;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -23,16 +25,12 @@ public class SurveyRepositoryImpl implements SurveyRepositoryCustom {
         QSurvey s = QSurvey.survey;
         QSurveyTargetPerson tp = QSurveyTargetPerson.surveyTargetPerson;
 
-        LocalDateTime now = LocalDateTime.now();
-
         SurveyIntroDto result = queryFactory
                 .select(Projections.constructor(SurveyIntroDto.class,
                         s.id,
                         s.title,
                         s.beginDate,
                         s.endDate,
-                        // BGN_DT <= now <= END_DT 이면 진행중
-                        s.beginDate.loe(now).and(s.endDate.goe(now)),
                         // 대상자 수 서브쿼리
                         com.querydsl.jpa.JPAExpressions
                                 .select(tp.count())
@@ -46,6 +44,39 @@ public class SurveyRepositoryImpl implements SurveyRepositoryCustom {
                         s.deletedDate.isNull()
                 )
                 .fetchOne();
+
+        return Optional.ofNullable(result);
+    }
+
+    @Override
+    public Optional<SurveyIntroDto> findActiveByEmpId(Long empId) {
+
+        QSurvey s = QSurvey.survey;
+        QSurveyTargetPerson tp = QSurveyTargetPerson.surveyTargetPerson;
+
+        LocalDateTime now = LocalDateTime.now();
+
+        SurveyIntroDto result = queryFactory
+                .select(Projections.constructor(SurveyIntroDto.class,
+                        s.id,
+                        s.title,
+                        s.beginDate,
+                        s.endDate,
+                        com.querydsl.jpa.JPAExpressions
+                                .select(tp.count())
+                                .from(tp)
+                                .where(tp.survey.id.eq(s.id))
+                ))
+                .from(s)
+                .join(tp).on(tp.survey.id.eq(s.id).and(tp.employee.id.eq(empId)))
+                .where(
+                        s.useYn.isTrue(),
+                        s.deletedDate.isNull(),
+                        s.status.eq(SurveyStatus.APPROVED),
+                        s.beginDate.loe(now),
+                        s.endDate.goe(now)
+                )
+                .fetchFirst();
 
         return Optional.ofNullable(result);
     }

@@ -57,7 +57,7 @@ public class QSurvey extends EntityPathBase<Survey> {
 
     public final StringPath site = createString("site");
 
-    public final StringPath status = createString("status");
+    public final EnumPath<com.woongjin.survey.domain.survey.domain.enums.SurveyStatus> status = createEnum("status", com.woongjin.survey.domain.survey.domain.enums.SurveyStatus.class);
 
     public final StringPath targetPersonType = createString("targetPersonType");
 

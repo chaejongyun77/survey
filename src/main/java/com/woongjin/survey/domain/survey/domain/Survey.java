@@ -1,5 +1,6 @@
 package com.woongjin.survey.domain.survey.domain;
 
+import com.woongjin.survey.domain.survey.domain.enums.SurveyStatus;
 import com.woongjin.survey.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -68,8 +69,9 @@ public class Survey extends BaseEntity {
     private Boolean useYn;
 
     /** DRAFT / COMPLETED / APPROVED */
+    @Enumerated(EnumType.STRING)
     @Column(name = "SVY_STS", nullable = false, length = 10)
-    private String status;
+    private SurveyStatus status;
 
     @Column(name = "DEL_DT")
     private LocalDateTime deletedDate;

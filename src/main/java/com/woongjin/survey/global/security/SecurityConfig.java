@@ -47,6 +47,13 @@ public class SecurityConfig {
             // 1) CSRF 비활성화 — JWT는 쿠키 기반이 아닌 토큰 기반이라 CSRF 불필요
             .csrf(csrf -> csrf.disable())
 
+            // 2) X-Frame-Options 설정
+            //    - DENY(기본값)는 iframe 자체를 완전 차단
+            //    - SAMEORIGIN으로 변경 → 같은 origin(localhost:8080)의 iframe은 허용
+            .headers(headers -> headers
+                .frameOptions(frame -> frame.sameOrigin())
+            )
+
             // 3) 세션 사용 안 함 — JWT로 매 요청마다 인증하니까 서버에 세션 저장 불필요
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
@@ -59,9 +66,10 @@ public class SecurityConfig {
                     "/auth/login",      // 로그인 페이지
                     "/css/**",          // 정적 리소스
                     "/js/**",
-                    "/images/**"
+                    "/images/**",
+                    "/*.html"           // static 루트 HTML (테스트 페이지 등)
                 ).permitAll()
-                    .requestMatchers("/auth/login", "/api/external/v1/admin/auth/**", "/api/surveys/**").permitAll()
+                    .requestMatchers("/auth/login", "/api/external/v1/admin/auth/**", "/api/surveys/**", "/surveys/intro").permitAll()
                 // 나머지 모든 요청은 인증 필요
                 .anyRequest().authenticated()
             )
