@@ -136,9 +136,8 @@
 
                     } else if (action === 'START_SURVEY') {
                         this.addLog(`→ 설문 시작 처리: empNo="${empNo}"`, 'success');
+                        this.addLog(`[8081] 실제 구현 시 설문 진행 페이지로 이동`, 'info');
                         this.closeModal();
-                        // 실제 8081은 여기서 설문 진행 페이지로 이동
-                        alert(`[8081] 설문 시작!\nempNo: ${empNo}\n\n(실제 구현 시 설문 진행 페이지로 이동)`);
                     }
                 });
             },
