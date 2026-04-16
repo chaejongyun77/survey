@@ -61,15 +61,26 @@ public class SecurityConfig {
 
             // 4) URL별 접근 권한 설정
             .authorizeHttpRequests(auth -> auth
-                // 인증 없이 접근 가능한 경로
                 .requestMatchers(
-                    "/auth/login",      // 로그인 페이지
-                    "/css/**",          // 정적 리소스
+                    // 인증 페이지
+                    "/auth/login",
+
+                    // 정적 리소스
+                    "/css/**",
                     "/js/**",
                     "/images/**",
-                    "/*.html"           // static 루트 HTML (테스트 페이지 등)
+                    "/*.html",              // static 루트 HTML (테스트 페이지 등)
+
+                    // 외부 시스템 연동 API (8081 → 8080)
+                    "/api/external/v1/admin/auth/**",
+
+                    // 설문 API (인증 없이 접근 — 토큰 기반 자체 검증)
+                    "/api/surveys/**",
+
+                    // 설문 View 페이지 (인증 없이 접근)
+                    "/surveys/intro",       // 설문 인트로 (일회성 토큰으로 접근)
+                    "/surveys/response"     // 설문 참여 페이지
                 ).permitAll()
-                    .requestMatchers("/auth/login", "/api/external/v1/admin/auth/**", "/api/surveys/**", "/surveys/intro").permitAll()
                 // 나머지 모든 요청은 인증 필요
                 .anyRequest().authenticated()
             )

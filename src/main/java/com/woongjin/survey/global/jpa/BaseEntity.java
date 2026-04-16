@@ -40,11 +40,11 @@ public abstract class BaseEntity {
 
     /** 수정자 — 엔티티 수정 시 로그인한 사용자 ID 자동 세팅 */
     @LastModifiedBy
-    @Column(name = "LAST_UPDT_ID")
+    @Column(name = "RCNT_UPDT_ID")
     private Long lastModifiedBy;
 
     /** 수정일 — 엔티티 수정 시 현재 시간 자동 세팅 */
     @LastModifiedDate
-    @Column(name = "LAST_UPDT_DT")
+    @Column(name = "RCNT_UPDT_DT")
     private LocalDateTime lastModifiedDate;
 }

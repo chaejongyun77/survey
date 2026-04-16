@@ -3,8 +3,10 @@ package com.woongjin.survey.domain.survey.service;
 import com.woongjin.survey.domain.survey.domain.Survey;
 import com.woongjin.survey.domain.survey.domain.SurveyParticipateStatus;
 import com.woongjin.survey.domain.survey.domain.SurveyTargetPersonId;
+import com.woongjin.survey.domain.survey.dto.QuestionDto;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroDto;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
+import com.woongjin.survey.domain.survey.repository.SurveyQuestionRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyResponseRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyTargetPersonRepository;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -31,11 +34,33 @@ import java.util.Optional;
 public class SurveyQueryService {
 
     private final SurveyRepository surveyRepository;
+    private final SurveyQuestionRepository surveyQuestionRepository;
     private final SurveyTargetPersonRepository surveyTargetPersonRepository;
     private final SurveyResponseRepository surveyResponseRepository;
     private final RedisTemplate<String, String> redisTemplate;
 
     private static final String TEMP_SAVE_KEY_PREFIX = "survey:temp:";
+
+    // =============================================
+    // 문항 조회
+    // =============================================
+
+    /**
+     * 설문 문항 + 옵션 목록 조회
+     * GET /api/surveys/{surveyId}/questions
+     */
+    @Transactional(readOnly = true)
+    public List<QuestionDto> getQuestions(Long surveyId) {
+        // 설문 존재 여부 검증
+        if (!surveyRepository.existsById(surveyId)) {
+            throw new BusinessException(ErrorCode.SURVEY_NOT_FOUND);
+        }
+
+        return surveyQuestionRepository.findBySurveyIdWithItems(surveyId)
+                .stream()
+                .map(QuestionDto::from)
+                .toList();
+    }
 
     // =============================================
     // 인트로 조회

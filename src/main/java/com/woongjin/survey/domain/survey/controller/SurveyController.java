@@ -65,4 +65,16 @@ public class SurveyController {
 
         return "survey/intro";
     }
+
+    /**
+     * 설문 응답(참여) 페이지
+     *
+     * - 인증된 사용자가 직접 접근하거나
+     * - test-iframe.html에서 START_SURVEY postMessage 수신 후 이동
+     */
+    @GetMapping("/response")
+    public String response(@RequestParam Long svyId, Model model) {
+        model.addAttribute("svyId", svyId);
+        return "survey/response";
+    }
 }

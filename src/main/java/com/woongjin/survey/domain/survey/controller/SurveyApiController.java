@@ -2,6 +2,7 @@ package com.woongjin.survey.domain.survey.controller;
 
 import com.woongjin.survey.domain.survey.domain.SurveyParticipateStatus;
 import com.woongjin.survey.domain.survey.dto.ParticipateRequest;
+import com.woongjin.survey.domain.survey.dto.QuestionDto;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
 import com.woongjin.survey.domain.survey.service.SurveyQueryService;
 import com.woongjin.survey.global.response.ApiResponse;
@@ -9,6 +10,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 설문 REST API 컨트롤러
@@ -24,6 +27,15 @@ public class SurveyApiController {
     @GetMapping("/{surveyId}/intro")
     public ApiResponse<SurveyIntroResponse> getIntro(@PathVariable Long surveyId) {
         return ApiResponse.success("설문 인트로 조회 성공", surveyQueryService.getIntro(surveyId));
+    }
+
+    /**
+     * 설문 문항 + 옵션 목록 조회
+     * GET /api/surveys/{surveyId}/questions
+     */
+    @GetMapping("/{surveyId}/questions")
+    public ApiResponse<List<QuestionDto>> getQuestions(@PathVariable Long surveyId) {
+        return ApiResponse.success("문항 조회 성공", surveyQueryService.getQuestions(surveyId));
     }
 
     @PostMapping("/{surveyId}/participate")

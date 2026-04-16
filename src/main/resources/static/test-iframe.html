@@ -96,7 +96,7 @@
     class="fixed inset-0 bg-black/50 z-50 flex justify-center items-center"
     @click.self="closeModal"
 >
-    <div class="relative w-full max-w-2xl mx-4">
+    <div class="relative w-full mx-4" style="width: min(960px, 95vw)">
         <!-- 닫기 버튼 -->
         <button
             @click="closeModal"
@@ -108,7 +108,7 @@
             x-ref="surveyIframe"
             :src="iframeUrl"
             class="w-full rounded-2xl shadow-2xl border-0"
-            style="height: 560px;"
+            style="height: 85vh;"
         ></iframe>
     </div>
 </div>
@@ -135,9 +135,7 @@
                         this.closeModal();
 
                     } else if (action === 'START_SURVEY') {
-                        this.addLog(`→ 설문 시작 처리: empNo="${empNo}"`, 'success');
-                        this.addLog(`[8081] 실제 구현 시 설문 진행 페이지로 이동`, 'info');
-                        this.closeModal();
+                        this.addLog(`→ 설문 시작 (iframe 내부 이동 처리)`, 'success');
                     }
                 });
             },

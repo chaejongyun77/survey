@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head th:replace="~{fragments/head :: head('설문 참여')}"></head>
+
+<!-- ✦ 복잡한 애니메이션만 style 태그에 유지, 나머지는 Tailwind 유틸리티 클래스로 대체 -->
+<style>
+  * { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; }
+
+  /* 문항 카드 진입 */
+  .anim-slide-up { animation: slideUp 0.3s ease both; }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* 조건분기 문항 펼침/접힘 */
+  .branch-collapse {
+    overflow: hidden;
+    transition: max-height 0.35s ease, opacity 0.3s ease, margin 0.3s ease;
+  }
+  .branch-collapse.open  { max-height: 600px; opacity: 1; }
+  .branch-collapse.close { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; }
+
+  /* 진행률 바 */
+  .progress-bar { transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+
+  /* 자동저장 토스트 */
+  .anim-toast { animation: fadeInOut 2.5s ease forwards; }
+  @keyframes fadeInOut {
+    0%   { opacity: 0; transform: translateY(4px); }
+    15%  { opacity: 1; transform: translateY(0); }
+    80%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* 필수 항목 에러 흔들기 */
+  .anim-shake { animation: shake 0.3s ease; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25%      { transform: translateX(-4px); }
+    75%      { transform: translateX(4px); }
+  }
+
+  /* 완료 화면 진입 */
+  .anim-complete { animation: fadeUp 0.5s ease; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* 드래그 상태 */
+  .rank-dragging { opacity: 0.5; transform: scale(1.02); box-shadow: 0 8px 24px rgba(255,107,0,0.2); }
+  .rank-drag-over { border-color: #FF6B00 !important; background: #FFF3EB !important; }
+
+  /* 스크롤바 */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #f5f5f5; }
+  ::-webkit-scrollbar-thumb { background: #FFD0A8; border-radius: 3px; }
+</style>
+
+<!-- ✦ Alpine.data()는 defer 스크립트보다 먼저 정의되어야 하므로 x-data 바인딩 전에 등록 -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<script th:inline="javascript">
+/*<![CDATA[*/
+const SVY_ID = /*[[${svyId}]]*/ null;
+/*]]>*/
+</script>
+
+<!-- ✦ Alpine.data() 컴포넌트 정의 — defer Alpine보다 먼저 로드되도록 일반 script 사용 -->
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('surveyResponse', () => ({
+
+    // ═══════════════════════════════════════════════
+    // 상태(State) — 3개 객체로 그룹화
+    // ═══════════════════════════════════════════════
+
+    /** UI 화면 제어 상태 */
+    ui: {
+      isLoading:     true,
+      loadError:     false,
+      isCompleted:   false,
+      isSubmitting:  false,
+      showSaveToast: false,
+      lastSavedAt:   '',
+    },
+
+    /** 설문 메타데이터 */
+    survey: {
+      title:       '',
+      description: '',
+      endDate:     '',
+      questions:   [],   // QuestionDto[] — API 응답 원본
+    },
+
+    /** 사용자 응답 데이터 */
+    responses: {
+      single:    {},   // { [qstId]: itemId }         — SINGLE, SCALE
+      multiple:  {},   // { [qstId]: itemId[] }        — MULTIPLE
+      text:      {},   // { [qstId]: string }          — TEXT
+      rank:      {},   // { [qstId]: QuestionItemDto[] } — RANK (정렬된 옵션 배열)
+      errors:    {},   // { [qstId]: boolean }
+    },
+
+    /** 드래그앤드롭 내부 상태 */
+    _drag: { srcQstId: null, srcIdx: null },
+    _autoSaveTimer: null,
+
+    // ═══════════════════════════════════════════════
+    // 초기화
+    // ═══════════════════════════════════════════════
+
+    async init() {
+      try {
+        const [introRes, questionsRes] = await Promise.all([
+          axios.get(`/api/surveys/${SVY_ID}/intro`),
+          axios.get(`/api/surveys/${SVY_ID}/questions`),
+        ]);
+
+        const intro = introRes.data.data;
+        this.survey.title       = intro.title ?? '';
+        this.survey.description = intro.description ?? '';
+        this.survey.endDate     = intro.endDate
+          ? intro.endDate.substring(0, 10).replaceAll('-', '.')
+          : '';
+        this.survey.questions   = questionsRes.data.data ?? [];
+
+        // 유형별 응답 초기값 세팅
+        this.survey.questions.forEach(q => {
+          if (q.qstTyCd === 'MULTIPLE') this.responses.multiple[q.qstId] = [];
+          if (q.qstTyCd === 'TEXT')     this.responses.text[q.qstId]     = '';
+          if (q.qstTyCd === 'RANK')     this.responses.rank[q.qstId]     = [...q.options];
+        });
+      } catch (e) {
+        console.error('설문 데이터 로드 실패:', e);
+        this.ui.loadError = true;
+      } finally {
+        this.ui.isLoading = false;
+      }
+    },
+
+    // ═══════════════════════════════════════════════
+    // 조건분기 가시성
+    // ═══════════════════════════════════════════════
+
+    isVisible(q) {
+      if (!q.isBranch) return true;
+      const parent = this.survey.questions.find(p => p.childQuestionId === q.qstId);
+      if (!parent) return true;
+      // 부모 문항에서 선택한 itemId === 이 문항의 parentItemId 일 때만 노출
+      return this.responses.single[parent.qstId] === q.parentItemId;
+    },
+
+    /**
+     * 렌더링 순서 보장 — 분기 문항을 부모 바로 뒤에 삽입
+     * survey.questions 원본 순서가 어떻든 상관없이
+     * 화면에서는 항상 [일반문항 → 분기문항] 순서로 표시
+     */
+    get orderedQuestions() {
+      const result = [];
+      const branchSet = new Set(
+        this.survey.questions
+          .filter(q => q.isBranch)
+          .map(q => q.qstId)
+      );
+
+      this.survey.questions
+        .filter(q => !q.isBranch)
+        .forEach(q => {
+          result.push(q);
+          // 이 문항의 분기 자식이 있으면 바로 뒤에 삽입
+          if (q.childQuestionId) {
+            const child = this.survey.questions.find(c => c.qstId === q.childQuestionId);
+            if (child) result.push(child);
+          }
+        });
+
+      // 혹시 부모가 없는 분기 문항이 있으면 맨 뒤에 추가 (방어 코드)
+      this.survey.questions
+        .filter(q => q.isBranch && !result.find(r => r.qstId === q.qstId))
+        .forEach(q => result.push(q));
+
+      return result;
+    },
+
+    get visibleQuestions() {
+      return this.orderedQuestions.filter(q => this.isVisible(q));
+    },
+
+    // 문항 번호 표시 (분기 문항은 "N-1" 형식)
+    getDisplayNo(q) {
+      if (q.isBranch) {
+        const parent = this.survey.questions.find(p => p.childQuestionId === q.qstId);
+        if (parent) {
+          const pNo = this.visibleQuestions.findIndex(vq => vq.qstId === parent.qstId) + 1;
+          return `${pNo}-1`;
+        }
+      }
+      return this.visibleQuestions.findIndex(vq => vq.qstId === q.qstId) + 1;
+    },
+
+    // ═══════════════════════════════════════════════
+    // 진행률
+    // ═══════════════════════════════════════════════
+
+    isAnswered(q) {
+      switch (q.qstTyCd) {
+        case 'TEXT':     return (this.responses.text[q.qstId] || '').trim().length > 0;
+        case 'MULTIPLE': return (this.responses.multiple[q.qstId] || []).length > 0;
+        case 'RANK':     return true;
+        default:         return this.responses.single[q.qstId] !== undefined;
+      }
+    },
+
+    get answeredCount() {
+      return this.visibleQuestions.filter(q => this.isAnswered(q)).length;
+    },
+
+    get progressPct() {
+      const total = this.visibleQuestions.length;
+      return total ? Math.round((this.answeredCount / total) * 100) : 0;
+    },
+
+    // ═══════════════════════════════════════════════
+    // 응답 처리
+    // ═══════════════════════════════════════════════
+
+    // SINGLE
+    selectSingle(q, itemId) {
+      this.responses.single[q.qstId] = itemId;
+      delete this.responses.errors[q.qstId];
+      // 분기 자식 문항 답변 초기화
+      if (q.childQuestionId) {
+        const cid = q.childQuestionId;
+        delete this.responses.single[cid];
+        this.responses.multiple[cid] = [];
+        this.responses.text[cid]     = '';
+      }
+      this.triggerAutoSave();
+    },
+
+    // SCALE
+    selectScale(qstId, itemId) {
+      this.responses.single[qstId] = itemId;
+      delete this.responses.errors[qstId];
+      this.triggerAutoSave();
+    },
+
+    // MULTIPLE
+    toggleMultiple(qstId, itemId) {
+      if (!this.responses.multiple[qstId]) this.responses.multiple[qstId] = [];
+      const idx = this.responses.multiple[qstId].indexOf(itemId);
+      if (idx > -1) this.responses.multiple[qstId].splice(idx, 1);
+      else          this.responses.multiple[qstId].push(itemId);
+      delete this.responses.errors[qstId];
+      this.triggerAutoSave();
+    },
+
+    isMultipleSelected(qstId, itemId) {
+      return (this.responses.multiple[qstId] || []).includes(itemId);
+    },
+
+    // TEXT
+    onTextInput(qstId) {
+      if ((this.responses.text[qstId] || '').trim()) delete this.responses.errors[qstId];
+      this.triggerAutoSave();
+    },
+
+    // ═══════════════════════════════════════════════
+    // 순위 드래그앤드롭
+    // ═══════════════════════════════════════════════
+
+    getRankList(qstId, options) {
+      if (!this.responses.rank[qstId]) this.responses.rank[qstId] = [...options];
+      return this.responses.rank[qstId];
+    },
+
+    onDragStart(e, qstId, idx) {
+      this._drag = { srcQstId: qstId, srcIdx: idx };
+      e.target.classList.add('rank-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    },
+
+    onDragOver(e) {
+      e.preventDefault();
+      e.currentTarget.classList.add('rank-drag-over');
+    },
+
+    onDragLeave(e) {
+      e.currentTarget.classList.remove('rank-drag-over');
+    },
+
+    onDrop(e, qstId, toIdx) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('rank-drag-over');
+      const { srcQstId, srcIdx } = this._drag;
+      if (srcQstId !== qstId || srcIdx === toIdx) return;
+      const list = [...this.responses.rank[qstId]];
+      const [moved] = list.splice(srcIdx, 1);
+      list.splice(toIdx, 0, moved);
+      this.responses.rank[qstId] = list;
+      this.triggerAutoSave();
+    },
+
+    onDragEnd(e) {
+      e.target.classList.remove('rank-dragging');
+      this._drag = { srcQstId: null, srcIdx: null };
+    },
+
+    // ═══════════════════════════════════════════════
+    // 자동저장 (debounce 3초)
+    // ═══════════════════════════════════════════════
+
+    triggerAutoSave() {
+      clearTimeout(this._autoSaveTimer);
+      this._autoSaveTimer = setTimeout(() => this.saveDraft(), 3000);
+    },
+
+    async saveDraft() {
+      // TODO: await axios.post(`/api/surveys/${SVY_ID}/draft`, this.buildPayload());
+      const now = new Date();
+      this.ui.lastSavedAt   = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+      this.ui.showSaveToast = true;
+      setTimeout(() => { this.ui.showSaveToast = false; }, 2500);
+    },
+
+    // ═══════════════════════════════════════════════
+    // 유효성 검증
+    // ═══════════════════════════════════════════════
+
+    hasError(qstId) {
+      return !!this.responses.errors[qstId];
+    },
+
+    validate() {
+      this.responses.errors = {};
+      this.visibleQuestions.forEach(q => {
+        if (q.esntlYn && !this.isAnswered(q)) this.responses.errors[q.qstId] = true;
+      });
+      return Object.keys(this.responses.errors).length === 0;
+    },
+
+    // ═══════════════════════════════════════════════
+    // 제출 페이로드 조립
+    // 백엔드 QstAnswerJson 구조와 1:1 매핑
+    // { answers: [{ qstId, type, answer }] }
+    // ═══════════════════════════════════════════════
+
+    buildPayload() {
+      const answers = this.visibleQuestions.reduce((acc, q) => {
+        switch (q.qstTyCd) {
+          case 'SINGLE':
+          case 'SCALE':
+            if (this.responses.single[q.qstId] !== undefined)
+              acc.push({ qstId: q.qstId, type: q.qstTyCd, answer: this.responses.single[q.qstId] });
+            break;
+          case 'MULTIPLE':
+            if ((this.responses.multiple[q.qstId] || []).length)
+              acc.push({ qstId: q.qstId, type: 'MULTIPLE', answer: this.responses.multiple[q.qstId] });
+            break;
+          case 'TEXT': {
+            const val = (this.responses.text[q.qstId] || '').trim();
+            if (val) acc.push({ qstId: q.qstId, type: 'TEXT', answer: val });
+            break;
+          }
+          case 'RANK':
+            acc.push({
+              qstId:  q.qstId,
+              type:   'RANK',
+              answer: (this.responses.rank[q.qstId] || q.options).map(o => o.itemId),
+            });
+            break;
+        }
+        return acc;
+      }, []);
+
+      return { answers };
+    },
+
+    // ═══════════════════════════════════════════════
+    // 최종 제출
+    // ═══════════════════════════════════════════════
+
+    async submitSurvey() {
+      if (!this.validate()) {
+        await this.$nextTick();
+        document.querySelector('.border-red-400')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      this.ui.isSubmitting = true;
+      try {
+        // TODO: await axios.post(`/api/surveys/${SVY_ID}/responses`, this.buildPayload());
+        await new Promise(r => setTimeout(r, 800)); // mock delay
+        this.ui.isCompleted = true;
+      } catch (e) {
+        alert('제출 중 오류가 발생했습니다. 다시 시도해주세요.');
+        console.error(e);
+      } finally {
+        this.ui.isSubmitting = false;
+      }
+    },
+
+    // ═══════════════════════════════════════════════
+    // 유틸
+    // ═══════════════════════════════════════════════
+
+    typeLabel(code) {
+      const map = { SINGLE: '단일 선택', MULTIPLE: '다중 선택', TEXT: '주관식', SCALE: '척도', RANK: '순위 선택' };
+      return map[code] ?? code;
+    },
+  }));
+});
+</script>
+
+<!-- Alpine.js — document.addEventListener('alpine:init') 이후 로드 -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<body class="bg-gray-50 min-h-screen" x-data="surveyResponse">
+
+  <!-- ── 로딩 화면 ───────────────────────────────── -->
+  <div x-show="ui.isLoading" x-cloak
+       class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center gap-3">
+    <svg class="animate-spin h-8 w-8 text-orange-500" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+    </svg>
+    <span class="text-gray-400 text-sm">설문 정보를 불러오는 중...</span>
+  </div>
+
+  <!-- ── 에러 화면 ───────────────────────────────── -->
+  <div x-show="ui.loadError" x-cloak
+       class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center gap-2 px-6">
+    <svg class="w-12 h-12 text-red-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+    </svg>
+    <p class="text-gray-700 font-semibold">설문 정보를 불러올 수 없습니다</p>
+    <p class="text-gray-400 text-sm">잠시 후 다시 시도해주세요.</p>
+  </div>
+
+  <!-- ── 완료 화면 ───────────────────────────────── -->
+  <div x-show="ui.isCompleted" x-cloak
+       class="anim-complete fixed inset-0 bg-white z-50 flex flex-col items-center justify-center px-6">
+    <div class="w-20 h-20 rounded-full bg-orange-50 flex items-center justify-center mb-6">
+      <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="#FF6B00" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+      </svg>
+    </div>
+    <h2 class="text-2xl font-bold text-gray-800 mb-2">설문 참여가 완료되었습니다</h2>
+    <p class="text-gray-500 text-sm mb-8">소중한 의견 감사드립니다.</p>
+    <button onclick="window.parent.postMessage({ action: 'CLOSE_SURVEY_MODAL' }, '*')"
+            class="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-semibold px-8 py-3 rounded-xl text-base transition-all">
+      설문 목록으로 돌아가기
+    </button>
+  </div>
+
+  <!-- ── 메인 컨텐츠 ─────────────────────────────── -->
+  <div x-show="!ui.isCompleted && !ui.isLoading && !ui.loadError" class="max-w-xl mx-auto pb-24">
+
+    <!-- 헤더 배너 -->
+    <div class="sticky top-0 z-20 text-white px-6 pt-8 pb-6 rounded-b-3xl shadow-md"
+         style="background: linear-gradient(135deg, #FF6B00 0%, #ff8c38 100%)">
+      <h1 class="text-xl font-bold mb-1" x-text="survey.title"></h1>
+      <p class="text-sm opacity-80 leading-relaxed mb-3 whitespace-pre-line" x-text="survey.description"></p>
+      <div class="flex items-center gap-4 text-xs opacity-75">
+        <span>마감 <span x-text="survey.endDate"></span></span>
+        <span>총 <span x-text="visibleQuestions.length"></span>문항</span>
+      </div>
+      <div class="mt-4">
+        <div class="flex justify-between text-xs opacity-80 mb-1">
+          <span>설문 진행 현황</span>
+          <span x-text="`${answeredCount} / ${visibleQuestions.length} 문항 완료`"></span>
+        </div>
+        <div class="w-full bg-white/30 rounded-full h-2">
+          <div class="progress-bar bg-white rounded-full h-2" :style="`width:${progressPct}%`"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 자동저장 토스트 -->
+    <div x-show="ui.showSaveToast" x-cloak class="fixed top-4 right-4 z-50">
+      <div class="anim-toast bg-white border border-orange-200 text-orange-600 text-xs font-medium
+                  px-3 py-2 rounded-lg shadow-md flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+        </svg>
+        자동 저장됨 <span x-text="ui.lastSavedAt"></span>
+      </div>
+    </div>
+
+    <!-- 문항 목록 -->
+    <div class="px-4 pt-5 space-y-4">
+      <template x-for="(q, idx) in orderedQuestions" :key="q.qstId">
+        <div class="anim-slide-up branch-collapse bg-white rounded-2xl shadow-sm border overflow-hidden"
+             :class="[
+               isVisible(q) ? 'open' : 'close',
+               hasError(q.qstId) ? 'border-red-400' : 'border-gray-100'
+             ]"
+             :style="`animation-delay:${idx * 0.04}s`">
+
+          <!-- 문항 헤더 -->
+          <div class="px-5 pt-5 pb-3">
+            <div class="flex items-center gap-2 mb-2 flex-wrap">
+              <!-- 문항 번호 뱃지 -->
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-md"
+                    :class="q.isBranch
+                      ? 'bg-orange-50 text-orange-500 border border-orange-200'
+                      : 'bg-orange-50 text-orange-500'"
+                    x-text="q.isBranch ? `문항 ${getDisplayNo(q)} · 조건 분기` : `문항 ${getDisplayNo(q)}`">
+              </span>
+              <span x-show="q.esntlYn" class="text-xs text-red-400 font-medium">필수</span>
+              <span class="text-xs text-gray-400">·</span>
+              <span class="text-xs text-gray-400" x-text="typeLabel(q.qstTyCd)"></span>
+              <!-- 분기 유발 뱃지 -->
+              <span x-show="q.childQuestionId"
+                    class="text-xs bg-orange-50 text-orange-500 border border-orange-200
+                           px-2 py-0.5 rounded-md ml-auto flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 9l3 3-3 3M6 12h10"/>
+                </svg>
+                선택 시 추가 문항
+              </span>
+            </div>
+            <p class="text-gray-800 font-semibold text-base leading-snug" x-text="q.qstCn"></p>
+          </div>
+
+          <!-- 에러 메시지 -->
+          <div x-show="hasError(q.qstId)" class="px-5 pb-1 anim-shake">
+            <p class="text-red-400 text-xs">필수 항목입니다.</p>
+          </div>
+
+          <!-- ① 단일선택 -->
+          <div x-show="q.qstTyCd === 'SINGLE'" class="px-4 pb-5 space-y-2">
+            <template x-for="opt in q.options" :key="opt.itemId">
+              <div class="flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer
+                          transition-colors duration-150 hover:bg-orange-50 hover:border-orange-400"
+                   :class="responses.single[q.qstId] === opt.itemId
+                     ? 'bg-orange-50 border-orange-400'
+                     : 'border-gray-200'"
+                   @click="selectSingle(q, opt.itemId)">
+                <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors"
+                     :class="responses.single[q.qstId] === opt.itemId ? 'border-orange-500' : 'border-gray-300'">
+                  <div x-show="responses.single[q.qstId] === opt.itemId"
+                       class="w-2.5 h-2.5 rounded-full bg-orange-500"></div>
+                </div>
+                <span class="text-sm text-gray-700" x-text="opt.itemName"></span>
+              </div>
+            </template>
+          </div>
+
+          <!-- ② 복수선택 -->
+          <div x-show="q.qstTyCd === 'MULTIPLE'" class="px-4 pb-5 space-y-2">
+            <template x-for="opt in q.options" :key="opt.itemId">
+              <div class="flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer
+                          transition-colors duration-150 hover:bg-orange-50 hover:border-orange-400"
+                   :class="isMultipleSelected(q.qstId, opt.itemId)
+                     ? 'bg-orange-50 border-orange-400'
+                     : 'border-gray-200'"
+                   @click="toggleMultiple(q.qstId, opt.itemId)">
+                <div class="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors"
+                     :class="isMultipleSelected(q.qstId, opt.itemId)
+                       ? 'border-orange-500 bg-orange-500'
+                       : 'border-gray-300'">
+                  <svg x-show="isMultipleSelected(q.qstId, opt.itemId)"
+                       class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24"
+                       stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                  </svg>
+                </div>
+                <span class="text-sm text-gray-700" x-text="opt.itemName"></span>
+              </div>
+            </template>
+          </div>
+
+          <!-- ③ 척도 -->
+          <div x-show="q.qstTyCd === 'SCALE'" class="px-4 pb-5">
+            <div class="flex gap-2">
+              <template x-for="opt in q.options" :key="opt.itemId">
+                <button class="flex-1 border rounded-xl py-3 text-sm font-medium transition-all duration-150
+                               hover:bg-orange-100 hover:border-orange-400 active:scale-95"
+                        :class="responses.single[q.qstId] === opt.itemId
+                          ? 'bg-orange-500 text-white border-orange-500'
+                          : 'text-gray-600 border-gray-200'"
+                        @click="selectScale(q.qstId, opt.itemId)"
+                        x-text="opt.itemName">
+                </button>
+              </template>
+            </div>
+            <div class="flex justify-between text-xs text-gray-400 mt-2 px-1">
+              <span x-text="q.options[0]?.itemName"></span>
+              <span x-text="q.options[q.options.length - 1]?.itemName"></span>
+            </div>
+          </div>
+
+          <!-- ④ 주관식 -->
+          <div x-show="q.qstTyCd === 'TEXT'" class="px-4 pb-5">
+            <textarea class="w-full border border-gray-200 rounded-xl p-4 text-sm text-gray-700
+                             resize-none focus:outline-none focus:border-orange-400
+                             focus:ring-2 focus:ring-orange-100 transition-all"
+                      rows="4" maxlength="500" placeholder="자유롭게 입력해 주세요."
+                      x-model="responses.text[q.qstId]"
+                      @input="onTextInput(q.qstId)">
+            </textarea>
+            <div class="text-right text-xs text-gray-400 mt-1">
+              <span x-text="(responses.text[q.qstId] || '').length"></span> / 500자
+            </div>
+          </div>
+
+          <!-- ⑤ 순위선택 -->
+          <div x-show="q.qstTyCd === 'RANK'" class="px-4 pb-5">
+            <p class="text-xs text-gray-400 mb-3">드래그하여 순위를 정해주세요</p>
+            <div class="space-y-2" @dragover.prevent>
+              <template x-for="(opt, rankIdx) in getRankList(q.qstId, q.options)" :key="opt.itemId">
+                <div class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3
+                            bg-white cursor-grab active:cursor-grabbing select-none
+                            transition-colors duration-150"
+                     draggable="true"
+                     @dragstart="onDragStart($event, q.qstId, rankIdx)"
+                     @dragover.prevent="onDragOver($event)"
+                     @dragleave="onDragLeave($event)"
+                     @drop="onDrop($event, q.qstId, rankIdx)"
+                     @dragend="onDragEnd($event)">
+                  <div class="w-7 h-7 rounded-full bg-orange-500 text-white
+                              flex items-center justify-center text-xs font-bold flex-shrink-0"
+                       x-text="rankIdx + 1">
+                  </div>
+                  <span class="text-sm text-gray-700 flex-1" x-text="opt.itemName"></span>
+                  <svg class="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
+                  </svg>
+                </div>
+              </template>
+            </div>
+          </div>
+
+        </div>
+      </template>
+    </div><!-- /문항 목록 -->
+
+    <!-- 하단 고정 제출 버튼 -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 shadow-lg z-10">
+      <div class="max-w-xl mx-auto">
+        <p class="text-xs text-gray-400 text-center mb-3">* 표시 항목은 필수 응답입니다</p>
+        <button class="w-full text-white font-semibold py-4 rounded-2xl text-base tracking-wide
+                       transition-all duration-200 active:scale-98
+                       disabled:bg-gray-300 disabled:cursor-not-allowed
+                       enabled:bg-orange-500 enabled:hover:bg-orange-600 enabled:hover:shadow-lg"
+                @click="submitSurvey"
+                :disabled="ui.isSubmitting">
+          <span x-show="!ui.isSubmitting">설문 제출하기 ✓</span>
+          <span x-show="ui.isSubmitting" class="flex items-center justify-center gap-2">
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="white" stroke-width="4"/>
+              <path class="opacity-75" fill="white" d="M4 12a8 8 0 018-8v8z"/>
+            </svg>
+            제출 중...
+          </span>
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /메인 -->
+
+</body>
+</html>
