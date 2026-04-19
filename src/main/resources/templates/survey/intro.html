@@ -47,8 +47,7 @@
             <header class="mb-6">
                 <span
                     class="inline-flex items-center px-3 py-1.5 rounded-md text-[12px] font-bold mb-4 bg-[#FFF2EB] text-[#FF6A00]"
-                    x-text="survey.status"
-                ></span>
+                >진행중</span>
                 <h1
                     class="text-2xl font-bold text-gray-900 leading-snug tracking-tight"
                     x-text="survey.title"
@@ -66,7 +65,7 @@
             <dl class="space-y-4 text-base">
                 <div class="flex items-start">
                     <dt class="w-24 shrink-0 text-gray-500">설문 기간</dt>
-                    <dd class="text-gray-800 font-medium" x-text="survey.period"></dd>
+                    <dd class="text-gray-800 font-medium" x-text="formatPeriod(survey.beginDate, survey.endDate)"></dd>
                 </div>
                 <div class="flex items-start">
                     <dt class="w-24 shrink-0 text-gray-500">설문 대상</dt>
@@ -141,6 +140,20 @@
                 }
                 // iframe 내부 location 변경 → 부모 페이지는 그대로, iframe만 전환
                 window.location.href = `/surveys/response?surveyId=${this.surveyId}`;
+            },
+
+            // 설문 기간 포맷팅 (yyyy.MM.dd ~ yyyy.MM.dd)
+            formatPeriod(beginDate, endDate) {
+                if (!beginDate || !endDate) return '';
+                return `${this.formatDate(beginDate)} ~ ${this.formatDate(endDate)}`;
+            },
+
+            formatDate(isoString) {
+                const d = new Date(isoString);
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${y}.${m}.${day}`;
             }
         }
     }

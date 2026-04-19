@@ -2,7 +2,7 @@ package com.woongjin.survey.domain.survey.service;
 
 import com.woongjin.survey.domain.employee.domain.Employee;
 import com.woongjin.survey.domain.employee.repository.EmployeeRepository;
-import com.woongjin.survey.domain.survey.dto.SurveyIntroDto;
+import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
 import com.woongjin.survey.domain.survey.infra.SurveyTokenRepository;
 import com.woongjin.survey.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -44,13 +44,13 @@ public class SurveyCreateService {
 
         Employee employee = employeeOpt.get();
 
-        Optional<SurveyIntroDto> surveyOpt = surveyQueryService.findActiveSurveyByEmpId(employee.getId());
+        Optional<SurveyIntroResponse> surveyOpt = surveyQueryService.findActiveSurveyByEmpId(employee.getId());
         if (surveyOpt.isEmpty()) {
             log.debug("설문 토큰 발급 거부: 진행중인 설문 없음 empNo={}, empId={}", empNo, employee.getId());
             return ApiResponse.success("대상 설문 없음");
         }
 
-        SurveyIntroDto survey = surveyOpt.get();
+        SurveyIntroResponse survey = surveyOpt.get();
         String token = surveyTokenRepository.save(empNo, survey.getSurveyId());
         log.info("설문 토큰 발급 완료: empNo={}, surveyId={}", empNo, survey.getSurveyId());
 

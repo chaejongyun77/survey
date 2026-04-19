@@ -5,7 +5,6 @@ import com.woongjin.survey.domain.survey.domain.Survey;
 import com.woongjin.survey.domain.survey.domain.SurveyParticipateStatus;
 import com.woongjin.survey.domain.survey.domain.SurveyTargetPersonId;
 import com.woongjin.survey.domain.survey.dto.QuestionDto;
-import com.woongjin.survey.domain.survey.dto.SurveyIntroDto;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
 import com.woongjin.survey.domain.survey.repository.SurveyQuestionRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyRepository;
@@ -75,7 +74,6 @@ public class SurveyQueryService {
     @Transactional(readOnly = true)
     public SurveyIntroResponse getIntro(Long surveyId) {
         return surveyRepository.findIntroById(surveyId)
-                .map(SurveyIntroResponse::from)
                 .orElseThrow(() -> {
                     log.warn("설문을 찾을 수 없음: surveyId={}", surveyId);
                     return new BusinessException(ErrorCode.SURVEY_NOT_FOUND);
@@ -91,7 +89,7 @@ public class SurveyQueryService {
      * - 8081 설문 체크 흐름에서 사용
      */
     @Transactional(readOnly = true)
-    public Optional<SurveyIntroDto> findActiveSurveyByEmpId(Long empId) {
+    public Optional<SurveyIntroResponse> findActiveSurveyByEmpId(Long empId) {
         return surveyRepository.findActiveByEmpId(empId);
     }
 

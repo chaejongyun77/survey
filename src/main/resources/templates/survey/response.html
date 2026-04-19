@@ -95,10 +95,10 @@ document.addEventListener('alpine:init', () => {
 
     /** 사용자 응답 데이터 */
     responses: {
-      single:    {},   // { [qstId]: itemId }         — SINGLE, SCALE
-      multiple:  {},   // { [qstId]: itemId[] }        — MULTIPLE
-      text:      {},   // { [qstId]: string }          — TEXT
-      rank:      {},   // { [qstId]: QuestionItemDto[] } — RANK (정렬된 옵션 배열)
+      single:    {},   // { [qstId]: itemId }         — SINGLE_CHOICE, SCALE
+      multiple:  {},   // { [qstId]: itemId[] }        — MULTIPLE_CHOICE
+      text:      {},   // { [qstId]: string }          — SUBJECTIVE
+      rank:      {},   // { [qstId]: QuestionItemDto[] } — RANKING (정렬된 옵션 배열)
       errors:    {},   // { [qstId]: boolean }
     },
 
@@ -127,9 +127,9 @@ document.addEventListener('alpine:init', () => {
 
         // 유형별 응답 초기값 세팅
         this.survey.questions.forEach(q => {
-          if (q.qstTyCd === 'MULTIPLE') this.responses.multiple[q.qstId] = [];
-          if (q.qstTyCd === 'TEXT')     this.responses.text[q.qstId]     = '';
-          if (q.qstTyCd === 'RANK')     this.responses.rank[q.qstId]     = [...q.options];
+          if (q.qstTyCd === 'MULTIPLE_CHOICE') this.responses.multiple[q.qstId] = [];
+          if (q.qstTyCd === 'SUBJECTIVE')      this.responses.text[q.qstId]     = '';
+          if (q.qstTyCd === 'RANKING')         this.responses.rank[q.qstId]     = [...q.options];
         });
       } catch (e) {
         console.error('설문 데이터 로드 실패:', e);
@@ -205,10 +205,10 @@ document.addEventListener('alpine:init', () => {
 
     isAnswered(q) {
       switch (q.qstTyCd) {
-        case 'TEXT':     return (this.responses.text[q.qstId] || '').trim().length > 0;
-        case 'MULTIPLE': return (this.responses.multiple[q.qstId] || []).length > 0;
-        case 'RANK':     return true;
-        default:         return this.responses.single[q.qstId] !== undefined;
+        case 'SUBJECTIVE':      return (this.responses.text[q.qstId] || '').trim().length > 0;
+        case 'MULTIPLE_CHOICE': return (this.responses.multiple[q.qstId] || []).length > 0;
+        case 'RANKING':         return true;
+        default:                return this.responses.single[q.qstId] !== undefined;
       }
     },
 
@@ -349,24 +349,24 @@ document.addEventListener('alpine:init', () => {
     buildPayload() {
       const answers = this.visibleQuestions.reduce((acc, q) => {
         switch (q.qstTyCd) {
-          case 'SINGLE':
+          case 'SINGLE_CHOICE':
           case 'SCALE':
             if (this.responses.single[q.qstId] !== undefined)
               acc.push({ qstId: q.qstId, type: q.qstTyCd, answer: this.responses.single[q.qstId] });
             break;
-          case 'MULTIPLE':
+          case 'MULTIPLE_CHOICE':
             if ((this.responses.multiple[q.qstId] || []).length)
-              acc.push({ qstId: q.qstId, type: 'MULTIPLE', answer: this.responses.multiple[q.qstId] });
+              acc.push({ qstId: q.qstId, type: 'MULTIPLE_CHOICE', answer: this.responses.multiple[q.qstId] });
             break;
-          case 'TEXT': {
+          case 'SUBJECTIVE': {
             const val = (this.responses.text[q.qstId] || '').trim();
-            if (val) acc.push({ qstId: q.qstId, type: 'TEXT', answer: val });
+            if (val) acc.push({ qstId: q.qstId, type: 'SUBJECTIVE', answer: val });
             break;
           }
-          case 'RANK':
+          case 'RANKING':
             acc.push({
               qstId:  q.qstId,
-              type:   'RANK',
+              type:   'RANKING',
               answer: (this.responses.rank[q.qstId] || q.options).map(o => o.itemId),
             });
             break;
@@ -406,7 +406,13 @@ document.addEventListener('alpine:init', () => {
     // ═══════════════════════════════════════════════
 
     typeLabel(code) {
-      const map = { SINGLE: '단일 선택', MULTIPLE: '다중 선택', TEXT: '주관식', SCALE: '척도', RANK: '순위 선택' };
+      const map = {
+        SINGLE_CHOICE:   '단일 선택',
+        MULTIPLE_CHOICE: '다중 선택',
+        SUBJECTIVE:      '주관식',
+        SCALE:           '척도',
+        RANKING:         '순위 선택'
+      };
       return map[code] ?? code;
     },
   }));
@@ -531,7 +537,7 @@ document.addEventListener('alpine:init', () => {
           </div>
 
           <!-- ① 단일선택 -->
-          <div x-show="q.qstTyCd === 'SINGLE'" class="px-4 pb-5 space-y-2">
+          <div x-show="q.qstTyCd === 'SINGLE_CHOICE'" class="px-4 pb-5 space-y-2">
             <template x-for="opt in q.options" :key="opt.itemId">
               <div class="flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer
                           transition-colors duration-150 hover:bg-orange-50 hover:border-orange-400"
@@ -550,7 +556,7 @@ document.addEventListener('alpine:init', () => {
           </div>
 
           <!-- ② 복수선택 -->
-          <div x-show="q.qstTyCd === 'MULTIPLE'" class="px-4 pb-5 space-y-2">
+          <div x-show="q.qstTyCd === 'MULTIPLE_CHOICE'" class="px-4 pb-5 space-y-2">
             <template x-for="opt in q.options" :key="opt.itemId">
               <div class="flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer
                           transition-colors duration-150 hover:bg-orange-50 hover:border-orange-400"
@@ -594,7 +600,7 @@ document.addEventListener('alpine:init', () => {
           </div>
 
           <!-- ④ 주관식 -->
-          <div x-show="q.qstTyCd === 'TEXT'" class="px-4 pb-5">
+          <div x-show="q.qstTyCd === 'SUBJECTIVE'" class="px-4 pb-5">
             <textarea class="w-full border border-gray-200 rounded-xl p-4 text-sm text-gray-700
                              resize-none focus:outline-none focus:border-orange-400
                              focus:ring-2 focus:ring-orange-100 transition-all"
@@ -608,7 +614,7 @@ document.addEventListener('alpine:init', () => {
           </div>
 
           <!-- ⑤ 순위선택 -->
-          <div x-show="q.qstTyCd === 'RANK'" class="px-4 pb-5">
+          <div x-show="q.qstTyCd === 'RANKING'" class="px-4 pb-5">
             <p class="text-xs text-gray-400 mb-3">드래그하여 순위를 정해주세요</p>
             <div class="space-y-2" @dragover.prevent>
               <template x-for="(opt, rankIdx) in getRankList(q.qstId, q.options)" :key="opt.itemId">

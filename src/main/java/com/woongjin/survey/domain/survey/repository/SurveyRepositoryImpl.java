@@ -4,9 +4,8 @@ import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.woongjin.survey.domain.survey.domain.QSurvey;
 import com.woongjin.survey.domain.survey.domain.QSurveyTargetPerson;
-import com.woongjin.survey.domain.survey.domain.SurveyParticipateStatus;
 import com.woongjin.survey.domain.survey.domain.enums.SurveyStatus;
-import com.woongjin.survey.domain.survey.dto.SurveyIntroDto;
+import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -20,13 +19,13 @@ public class SurveyRepositoryImpl implements SurveyRepositoryCustom {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public Optional<SurveyIntroDto> findIntroById(Long surveyId) {
+    public Optional<SurveyIntroResponse> findIntroById(Long surveyId) {
 
         QSurvey s = QSurvey.survey;
         QSurveyTargetPerson tp = QSurveyTargetPerson.surveyTargetPerson;
 
-        SurveyIntroDto result = queryFactory
-                .select(Projections.constructor(SurveyIntroDto.class,
+        SurveyIntroResponse result = queryFactory
+                .select(Projections.constructor(SurveyIntroResponse.class,
                         s.id,
                         s.title,
                         s.beginDate,
@@ -49,15 +48,15 @@ public class SurveyRepositoryImpl implements SurveyRepositoryCustom {
     }
 
     @Override
-    public Optional<SurveyIntroDto> findActiveByEmpId(Long empId) {
+    public Optional<SurveyIntroResponse> findActiveByEmpId(Long empId) {
 
         QSurvey s = QSurvey.survey;
         QSurveyTargetPerson tp = QSurveyTargetPerson.surveyTargetPerson;
 
         LocalDateTime now = LocalDateTime.now();
 
-        SurveyIntroDto result = queryFactory
-                .select(Projections.constructor(SurveyIntroDto.class,
+        SurveyIntroResponse result = queryFactory
+                .select(Projections.constructor(SurveyIntroResponse.class,
                         s.id,
                         s.title,
                         s.beginDate,

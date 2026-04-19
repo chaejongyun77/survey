@@ -33,7 +33,7 @@ public class SurveyQuestion extends BaseEntity {
     @Column(name = "SVY_ID", nullable = false)
     private Long surveyId;
 
-    /** 문항 유형 (SINGLE / MULTIPLE / TEXT / SCALE / RANK) */
+    /** 문항 유형 (SINGLE_CHOICE / MULTIPLE_CHOICE / SUBJECTIVE / SCALE / RANKING) */
     @Enumerated(EnumType.STRING)
     @Column(name = "QST_TYPE", nullable = false, length = 10)
     private QuestionType questionType;
