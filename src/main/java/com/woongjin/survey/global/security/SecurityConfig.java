@@ -48,10 +48,19 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
 
             // 2) X-Frame-Options 설정
-            //    - DENY(기본값)는 iframe 자체를 완전 차단
-            //    - SAMEORIGIN으로 변경 → 같은 origin(localhost:8080)의 iframe은 허용
+            //    - Spring Security 기본 frameOptions 비활성화 후 커스텀 처리
+            //    - /surveys/** 경로는 8081 iframe에서 열려야 하므로 ALLOWALL
+            //    - 나머지는 SAMEORIGIN 유지
             .headers(headers -> headers
-                .frameOptions(frame -> frame.sameOrigin())
+                .frameOptions(frame -> frame.disable())  // 기본값 비활성화
+                .addHeaderWriter((request, response) -> {
+                    String uri = request.getRequestURI();
+                    if (uri.startsWith("/surveys/")) {
+                        response.setHeader("X-Frame-Options", "ALLOWALL");
+                    } else {
+                        response.setHeader("X-Frame-Options", "SAMEORIGIN");
+                    }
+                })
             )
 
             // 3) 세션 사용 안 함 — JWT로 매 요청마다 인증하니까 서버에 세션 저장 불필요
@@ -69,19 +78,23 @@ public class SecurityConfig {
                     "/css/**",
                     "/js/**",
                     "/images/**",
-                    "/*.html",              // static 루트 HTML (테스트 페이지 등)
+                    "/*.html",
 
                     // 외부 시스템 연동 API (8081 → 8080)
                     "/api/external/v1/admin/auth/**",
 
-                    // 설문 API (인증 없이 접근 — 토큰 기반 자체 검증)
-                    "/api/surveys/**",
+                    // 설문 View 페이지
+                    "/surveys/intro",       // 일회성 Redis 토큰 진입점
+                    "/surveys/response",    // ClientInterceptor 에서 검증
 
-                    // 설문 View 페이지 (인증 없이 접근)
-                    "/surveys/intro",       // 설문 인트로 (일회성 토큰으로 접근)
-                    "/surveys/response"     // 설문 참여 페이지
+                    // 에러 페이지
+                    "/error/**"
                 ).permitAll()
-                // 나머지 모든 요청은 인증 필요
+
+                // 설문 참여 API — Security 는 열어두고 ClientInterceptor 에서 검증
+                .requestMatchers("/api/surveys/**").permitAll()
+
+                // 나머지 모든 요청은 직원 JWT 인증 필요
                 .anyRequest().authenticated()
             )
 

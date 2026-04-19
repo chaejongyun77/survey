@@ -5,9 +5,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 설문 참여하기 요청 DTO
- * - 추후 JWT 인증 도입 시 empId는 토큰에서 추출하는 방식으로 교체 예정
+ * @deprecated empId 는 ClientInterceptor 가 주입하는 request attribute(empNo) 로 대체됨
  */
+@Deprecated
 @Getter
 @NoArgsConstructor
 public class ParticipateRequest {
