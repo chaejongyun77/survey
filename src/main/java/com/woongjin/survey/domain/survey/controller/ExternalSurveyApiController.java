@@ -24,7 +24,7 @@ public class ExternalSurveyApiController {
     @GetMapping("/survey-check")
     public ApiResponse<String> checkSurvey(
             @RequestParam String empNo,
-            @RequestHeader(value = "X-Internal-Api-Key", required = false) String apiKey) {
+            @RequestHeader(value = "X-Internal-Api-Key") String apiKey) {
 
         if (!internalApiKey.equals(apiKey)) {
             log.warn("유효하지 않은 API Key 요청: empNo={}", empNo);

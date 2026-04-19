@@ -91,8 +91,12 @@ public class SecurityConfig {
                     "/error/**"
                 ).permitAll()
 
-                // 설문 참여 API — Security 는 열어두고 ClientInterceptor 에서 검증
-                .requestMatchers("/api/surveys/**").permitAll()
+                // 설문 참여 API — Security 는 열어두고 ClientInterceptor 에서 검증 (사용자측면)
+                    .requestMatchers(
+                            "/api/surveys/*/intro",
+                            "/api/surveys/*/questions",
+                            "/api/surveys/*/participate"
+                    ).permitAll()
 
                 // 나머지 모든 요청은 직원 JWT 인증 필요
                 .anyRequest().authenticated()
