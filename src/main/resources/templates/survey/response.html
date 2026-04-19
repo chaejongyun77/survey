@@ -342,34 +342,67 @@ document.addEventListener('alpine:init', () => {
 
     // ═══════════════════════════════════════════════
     // 제출 페이로드 조립
-    // 백엔드 QstAnswerJson 구조와 1:1 매핑
-    // { answers: [{ qstId, type, answer }] }
+    // 백엔드 SubmitRequest / AnswerDto 구조와 1:1 매핑
+    // { answers: [{ questionId, type, selectedItemIds, textAnswer, scaleValue, rankedItemIds }] }
     // ═══════════════════════════════════════════════
 
     buildPayload() {
       const answers = this.visibleQuestions.reduce((acc, q) => {
         switch (q.qstTyCd) {
-          case 'SINGLE_CHOICE':
-          case 'SCALE':
-            if (this.responses.single[q.qstId] !== undefined)
-              acc.push({ qstId: q.qstId, type: q.qstTyCd, answer: this.responses.single[q.qstId] });
-            break;
-          case 'MULTIPLE_CHOICE':
-            if ((this.responses.multiple[q.qstId] || []).length)
-              acc.push({ qstId: q.qstId, type: 'MULTIPLE_CHOICE', answer: this.responses.multiple[q.qstId] });
-            break;
-          case 'SUBJECTIVE': {
-            const val = (this.responses.text[q.qstId] || '').trim();
-            if (val) acc.push({ qstId: q.qstId, type: 'SUBJECTIVE', answer: val });
+          case 'SINGLE_CHOICE': {
+            const itemId = this.responses.single[q.qstId];
+            if (itemId !== undefined) {
+              acc.push({
+                questionId: q.qstId,
+                type: 'SINGLE_CHOICE',
+                selectedItemIds: [itemId],
+              });
+            }
             break;
           }
-          case 'RANKING':
+          case 'MULTIPLE_CHOICE': {
+            const list = this.responses.multiple[q.qstId] || [];
+            if (list.length) {
+              acc.push({
+                questionId: q.qstId,
+                type: 'MULTIPLE_CHOICE',
+                selectedItemIds: list,
+              });
+            }
+            break;
+          }
+          case 'SUBJECTIVE': {
+            const val = (this.responses.text[q.qstId] || '').trim();
+            if (val) {
+              acc.push({
+                questionId: q.qstId,
+                type: 'SUBJECTIVE',
+                textAnswer: val,
+              });
+            }
+            break;
+          }
+          case 'SCALE': {
+            // SCALE: 선택한 itemId 를 scaleValue 에 그대로 전달 (정수형)
+            const itemId = this.responses.single[q.qstId];
+            if (itemId !== undefined) {
+              acc.push({
+                questionId: q.qstId,
+                type: 'SCALE',
+                scaleValue: itemId,
+              });
+            }
+            break;
+          }
+          case 'RANKING': {
+            const rankList = this.responses.rank[q.qstId] || q.options;
             acc.push({
-              qstId:  q.qstId,
-              type:   'RANKING',
-              answer: (this.responses.rank[q.qstId] || q.options).map(o => o.itemId),
+              questionId: q.qstId,
+              type: 'RANKING',
+              rankedItemIds: rankList.map(o => o.itemId),
             });
             break;
+          }
         }
         return acc;
       }, []);
@@ -390,12 +423,20 @@ document.addEventListener('alpine:init', () => {
       }
       this.ui.isSubmitting = true;
       try {
-        // TODO: await axios.post(`/api/surveys/${SVY_ID}/responses`, this.buildPayload());
-        await new Promise(r => setTimeout(r, 800)); // mock delay
-        this.ui.isCompleted = true;
+        const payload = this.buildPayload();
+        console.log('[submit] payload:', JSON.stringify(payload, null, 2));
+        const res = await axios.post(`/api/surveys/${SVY_ID}/submit`, payload);
+        console.log('[submit] response:', res.status, res.data);
+
+        if (res.data?.success) {
+          this.ui.isCompleted = true;
+        } else {
+          alert(res.data?.message || '제출에 실패했습니다.');
+        }
       } catch (e) {
-        alert('제출 중 오류가 발생했습니다. 다시 시도해주세요.');
-        console.error(e);
+        console.error('[submit] error:', e.response?.status, e.response?.data, e);
+        const message = e.response?.data?.message || '제출 중 오류가 발생했습니다. 다시 시도해주세요.';
+        alert(message);
       } finally {
         this.ui.isSubmitting = false;
       }

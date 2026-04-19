@@ -1,6 +1,5 @@
 package com.woongjin.survey.domain.survey.service;
 
-import com.woongjin.survey.domain.employee.repository.EmployeeRepository;
 import com.woongjin.survey.domain.survey.domain.Survey;
 import com.woongjin.survey.domain.survey.domain.SurveyParticipateStatus;
 import com.woongjin.survey.domain.survey.domain.SurveyTargetPersonId;
@@ -38,7 +37,6 @@ public class SurveyQueryService {
     private final SurveyTargetPersonRepository surveyTargetPersonRepository;
     private final SurveyResponseRepository surveyResponseRepository;
     private final RedisTemplate<String, String> redisTemplate;
-    private final EmployeeRepository employeeRepository;
 
     private static final String TEMP_SAVE_KEY_PREFIX = "survey:temp:";
 
@@ -110,12 +108,7 @@ public class SurveyQueryService {
      * 7. 모두 통과          → AVAILABLE
      */
     @Transactional(readOnly = true)
-    public SurveyParticipateStatus checkParticipate(Long surveyId, String empNo) {
-
-        // empNo → empId 변환
-        Long empId = employeeRepository.findByEmpNo(empNo)
-                .orElseThrow(() -> new BusinessException(ErrorCode.SURVEY_NOT_TARGET))
-                .getId();
+    public SurveyParticipateStatus checkParticipate(Long surveyId, Long empId) {
 
         // 1. 설문 존재 여부
         Survey survey = surveyRepository.findById(surveyId)

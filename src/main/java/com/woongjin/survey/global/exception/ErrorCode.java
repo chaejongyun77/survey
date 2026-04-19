@@ -18,7 +18,14 @@ public enum ErrorCode {
     SURVEY_PERIOD_ENDED("설문 기간이 종료되었습니다."),
     SURVEY_NOT_TARGET("설문 대상자가 아닙니다."),
     SURVEY_ALREADY_DONE("이미 참여한 설문입니다."),
-    SURVEY_HAS_TEMP_SAVE("임시저장된 설문이 있습니다.");
+    SURVEY_HAS_TEMP_SAVE("임시저장된 설문이 있습니다."),
+
+    // ── 설문 제출 검증 ──────────────────────────────────
+    ANSWER_INVALID_QUESTION("존재하지 않는 문항입니다."),
+    ANSWER_REQUIRED_MISSING("필수 문항이 누락되었습니다."),
+    ANSWER_TYPE_MISMATCH("문항 유형과 답변 형식이 일치하지 않습니다."),
+    ANSWER_INVALID_OPTION("유효하지 않은 선택지입니다."),
+    ANSWER_INVALID_FORMAT("답변 형식이 올바르지 않습니다.");
 
     private final String message;
 }

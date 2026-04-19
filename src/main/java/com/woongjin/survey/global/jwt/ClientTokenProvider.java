@@ -26,8 +26,7 @@ import java.util.Date;
  * │    → 토큰 오용 자체가 원천 차단                          │
  * │                                                         │
  * │  [클레임 구조]                                           │
- * │   sub  : empNo (사원번호)                                │
- * │   svyId: surveyId (설문 ID)                              │
+ * │   sub  : empId (사원 PK)                                 │
  * └─────────────────────────────────────────────────────────┘
  *
  * [만료 전략]
@@ -58,16 +57,15 @@ public class ClientTokenProvider {
     /**
      * 설문 참여용 JWT 발급
      *
-     * @param empNo    사원번호 (Redis payload 에서 복원)
-     * @param surveyId 설문 ID
+     * @param empId 사원 PK
      * @return 서명된 JWT 문자열
      */
-    public String generateClientToken(String empNo) {
+    public String generateClientToken(Long empId) {
         Date now    = new Date();
         Date expiry = new Date(now.getTime() + clientProperties.getTokenExpiration());
 
         return Jwts.builder()
-                .subject(empNo)
+                .subject(String.valueOf(empId))
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(secretKey)
@@ -113,8 +111,8 @@ public class ClientTokenProvider {
     // Claims 접근 헬퍼
     // ─────────────────────────────────────────────────────────
 
-    /** Claims 에서 사원번호 추출 */
-    public String extractEmpNo(Claims claims) {
-        return claims.getSubject();
+    /** Claims 에서 사원 PK 추출 */
+    public Long extractEmpId(Claims claims) {
+        return Long.valueOf(claims.getSubject());
     }
 }

@@ -95,7 +95,8 @@ public class SecurityConfig {
                     .requestMatchers(
                             "/api/surveys/*/intro",
                             "/api/surveys/*/questions",
-                            "/api/surveys/*/participate"
+                            "/api/surveys/*/participate",
+                            "/api/surveys/*/submit"
                     ).permitAll()
 
                 // 나머지 모든 요청은 직원 JWT 인증 필요

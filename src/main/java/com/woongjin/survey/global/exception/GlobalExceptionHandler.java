@@ -5,6 +5,7 @@ import com.woongjin.survey.global.jwt.JwtAuthException;
 import com.woongjin.survey.global.response.ApiResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -46,8 +47,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ApiResponse<Void> handleValidation(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()
-                .map(fe -> fe.getDefaultMessage())
+                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
                 .collect(Collectors.joining(", "));
+        log.warn("ValidationException: {}", message);
         return ApiResponse.error(message);
     }
 
@@ -69,6 +71,18 @@ public class GlobalExceptionHandler {
         log.warn("JwtAuthException [{}]: {}", e.getErrorCode().name(), e.getMessage());
         response.setStatus(e.getErrorCode().getStatus().value());
         return ApiResponse.error(e.getMessage());
+    }
+
+    /**
+     * DB 무결성 위반 (unique 제약, NOT NULL 등)
+     * - 운영 중엔 거의 발생하지 않는 이상 상황 — 500 으로 처리
+     * - (SVY_ID, EMP_ID) unique 중복은 사전 checkParticipate 에서 이미 차단됨
+     */
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ApiResponse<Void> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        log.error("DataIntegrityViolationException: {}", e.getMostSpecificCause().getMessage(), e);
+        return ApiResponse.error("데이터 처리 중 오류가 발생했습니다.");
     }
 
     /**

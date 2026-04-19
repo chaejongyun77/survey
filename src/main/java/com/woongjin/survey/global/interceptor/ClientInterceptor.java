@@ -37,13 +37,12 @@ import java.nio.charset.StandardCharsets;
  * [처리 흐름]
  * 1) 쿠키에서 svy_client_token 추출
  * 2) ClientTokenProvider.getClaims() 로 서명 검증 + 파싱
- * 3) 성공 → empNo / surveyId 를 request attribute 에 주입
+ * 3) 성공 → empId 를 request attribute 에 주입
  *    실패 → View 요청: error/invalid-token 리다이렉트
  *           API 요청:  401 JSON 응답
  *
  * [request attribute 키]
- *  - "clientEmpNo"   : String  — 사원번호
- *  - "clientSurveyId": Long    — 설문 ID
+ *  - "clientEmpId"   : Long  — 사원 PK
  */
 @Slf4j
 @Component
@@ -54,7 +53,7 @@ public class ClientInterceptor implements HandlerInterceptor {
     private final ObjectMapper        objectMapper;
 
     /** 컨트롤러/서비스에서 attribute 키를 직접 참조할 수 있도록 상수 공개 */
-    public static final String ATTR_EMP_NO = "clientEmpNo";
+    public static final String ATTR_EMP_ID = "clientEmpId";
 
     @Override
     public boolean preHandle(HttpServletRequest request,
@@ -72,10 +71,10 @@ public class ClientInterceptor implements HandlerInterceptor {
         try {
             Claims claims = clientTokenProvider.getClaims(token);
 
-            // 검증 성공 → empNo 를 attribute 에 주입 (surveyId 는 요청 파라미터로 전달)
-            request.setAttribute(ATTR_EMP_NO, clientTokenProvider.extractEmpNo(claims));
+            // 검증 성공 → empId 를 attribute 에 주입
+            request.setAttribute(ATTR_EMP_ID, clientTokenProvider.extractEmpId(claims));
 
-            log.debug("Client 토큰 검증 성공: empNo={}", request.getAttribute(ATTR_EMP_NO));
+            log.debug("Client 토큰 검증 성공: empId={}", request.getAttribute(ATTR_EMP_ID));
             return true;
 
         } catch (JwtAuthException e) {
