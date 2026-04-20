@@ -85,13 +85,13 @@ public class SecurityConfig {
 
                     // 설문 View 페이지
                     "/surveys/intro",       // 일회성 Redis 토큰 진입점
-                    "/surveys/response",    // ClientInterceptor 에서 검증
+                    "/surveys/response",    // ClientTokenFilter 에서 검증
 
                     // 에러 페이지
                     "/error/**"
                 ).permitAll()
 
-                // 설문 참여 API — Security 는 열어두고 ClientInterceptor 에서 검증 (사용자측면)
+                // 설문 참여 API — Security 는 열어두고 ClientTokenFilter 에서 검증 (사용자측면)
                     .requestMatchers(
                             "/api/surveys/*/intro",
                             "/api/surveys/*/questions",

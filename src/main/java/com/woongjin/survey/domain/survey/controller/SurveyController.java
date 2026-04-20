@@ -109,7 +109,7 @@ public class SurveyController {
      * 설문 응답(참여) 페이지
      *
      * - svyId 파라미터 제거: surveyId 는 Client JWT 클레임에서 추출
-     * - 실제 인증/권한 검증은 ClientInterceptor 에서 처리
+     * - 실제 인증/권한 검증은 ClientTokenFilter 에서 처리
      */
     @GetMapping("/response")
     public String response() {

@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * @deprecated empId 는 ClientInterceptor 가 주입하는 request attribute(empNo) 로 대체됨
+ * @deprecated empId 는 ClientTokenFilter 가 주입하는 request attribute 로 대체됨
  */
 @Deprecated
 @Getter

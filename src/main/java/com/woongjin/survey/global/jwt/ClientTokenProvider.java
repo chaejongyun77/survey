@@ -41,7 +41,7 @@ public class ClientTokenProvider {
     private final ClientProperties clientProperties;
     private SecretKey secretKey;
 
-    /** 쿠키 이름 — ClientInterceptor 와 공유 */
+    /** 쿠키 이름 — ClientTokenFilter 와 공유 */
     public static final String COOKIE_NAME = "svy_client_token";
 
     @PostConstruct

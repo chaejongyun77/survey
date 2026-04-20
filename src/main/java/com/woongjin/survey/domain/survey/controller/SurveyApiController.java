@@ -6,7 +6,7 @@ import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
 import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
 import com.woongjin.survey.domain.survey.service.SurveyQueryService;
 import com.woongjin.survey.domain.survey.service.SurveySubmitService;
-import com.woongjin.survey.global.interceptor.ClientInterceptor;
+import com.woongjin.survey.global.filter.ClientTokenFilter;
 import com.woongjin.survey.global.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -18,7 +18,7 @@ import java.util.List;
 
 /**
  * 설문 REST API 컨트롤러
- * - 인증: ClientInterceptor 에서 svy_client_token 검증 후 empNo를 request attribute 로 주입
+ * - 인증: ClientTokenFilter 에서 svy_client_token 검증 후 empId 를 request attribute 로 주입
  */
 @Slf4j
 @RestController
@@ -41,7 +41,7 @@ public class SurveyApiController {
 
     /**
      * 설문 참여 가능 여부 검증
-     * - empId: ClientInterceptor 가 주입한 request attribute 에서 추출
+     * - empId: ClientTokenFilter 가 주입한 request attribute 에서 추출
      * - surveyId: @PathVariable 로 전달
      */
     @PostMapping("/{surveyId}/participate")
@@ -49,7 +49,7 @@ public class SurveyApiController {
             @PathVariable Long surveyId,
             HttpServletRequest request) {
 
-        Long empId = (Long) request.getAttribute(ClientInterceptor.ATTR_EMP_ID);
+        Long empId = (Long) request.getAttribute(ClientTokenFilter.ATTR_EMP_ID);
         log.debug("설문 참여 검증: surveyId={}, empId={}", surveyId, empId);
 
         SurveyParticipateStatus status =
@@ -64,7 +64,7 @@ public class SurveyApiController {
 
     /**
      * 설문 최종 제출
-     * - empId: ClientInterceptor 가 주입한 request attribute 에서 추출
+     * - empId: ClientTokenFilter 가 주입한 request attribute 에서 추출
      * - surveyId: @PathVariable 로 전달
      * - body: SubmitRequest (답변 목록)
      *
@@ -79,7 +79,7 @@ public class SurveyApiController {
             @Valid @RequestBody SubmitRequest request,
             HttpServletRequest servletRequest) {
 
-        Long empId = (Long) servletRequest.getAttribute(ClientInterceptor.ATTR_EMP_ID);
+        Long empId = (Long) servletRequest.getAttribute(ClientTokenFilter.ATTR_EMP_ID);
         log.info("설문 제출 요청: surveyId={}, empId={}, answerCount={}",
                 surveyId, empId, request.getAnswers().size());
 

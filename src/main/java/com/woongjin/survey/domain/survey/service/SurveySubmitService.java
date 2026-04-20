@@ -55,7 +55,7 @@ public class SurveySubmitService {
      * 설문 최종 제출
      *
      * @param surveyId 설문 ID
-     * @param empId    사원 PK (ClientInterceptor 에서 주입)
+     * @param empId    사원 PK (ClientTokenFilter 에서 주입)
      * @param request  제출 요청 바디
      */
     @Transactional
