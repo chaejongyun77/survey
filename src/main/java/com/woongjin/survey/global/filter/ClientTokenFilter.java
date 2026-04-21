@@ -14,27 +14,26 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 /**
  * 설문 참여자(Client) 전용 필터
  *
- * [적용 경로] FilterConfig 에서 FilterRegistrationBean 으로 지정
- *   /surveys/client/response, /api/external/v1/thinkbig/surveys/*
+ * [적용 경로] SecurityConfig 의 clientFilterChain 에서 관리
+ *   /surveys/client/**, /api/external/v1/thinkbig/surveys/**
  *
  * [처리 흐름]
  * 1) 쿠키에서 svy_client_token 추출
  * 2) ClientTokenProvider.getClaims() 로 서명 검증 + 파싱
- * 3) 성공 → empId 를 request attribute 에 주입 후 체인 통과
+ * 3) 성공 → SecurityContext 에 Authentication(empId) 세팅 후 체인 통과
  *    실패 → View 요청: error/invalid-token 리다이렉트
  *           API 요청:  401 JSON 응답
- *
- * [@Component 미사용 이유]
- *  @Component 를 붙이면 Spring Boot 가 전 경로에 자동 등록하여
- *  FilterConfig 의 URL 패턴 설정이 무의미해짐. FilterConfig 에서만 등록.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -58,8 +57,11 @@ public class ClientTokenFilter extends OncePerRequestFilter {
 
         try {
             Claims claims = clientTokenProvider.getClaims(token);
-            request.setAttribute(ClientTokenProvider.ATTR_EMP_ID, clientTokenProvider.extractEmpId(claims));
-            log.debug("Client 토큰 검증 성공: empId={}", request.getAttribute(ClientTokenProvider.ATTR_EMP_ID));
+            Long empId = clientTokenProvider.extractEmpId(claims);
+            SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken(empId, null, List.of())
+            );
+            log.debug("Client 토큰 검증 성공: empId={}", empId);
             chain.doFilter(request, response);
 
         } catch (JwtAuthException e) {

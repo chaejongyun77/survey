@@ -6,19 +6,18 @@ import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
 import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
 import com.woongjin.survey.domain.survey.service.SurveyQueryService;
 import com.woongjin.survey.domain.survey.service.SurveySubmitService;
-import com.woongjin.survey.global.jwt.ClientTokenProvider;
 import com.woongjin.survey.global.response.ApiResponse;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 /**
  * 설문 REST API 컨트롤러
- * - 인증: ClientTokenFilter 에서 svy_client_token 검증 후 empId 를 request attribute 로 주입
+ * - 인증: ClientTokenFilter 가 svy_client_token 검증 후 SecurityContext 에 empId(Long) 세팅
  */
 @Slf4j
 @RestController
@@ -39,21 +38,13 @@ public class SurveyApiController {
         return ApiResponse.success("문항 조회 성공", surveyQueryService.getQuestions(surveyId));
     }
 
-    /**
-     * 설문 참여 가능 여부 검증
-     * - empId: ClientTokenFilter 가 주입한 request attribute 에서 추출
-     * - surveyId: @PathVariable 로 전달
-     */
     @PostMapping("/{surveyId}/participate")
     public ApiResponse<Void> participate(
             @PathVariable Long surveyId,
-            HttpServletRequest request) {
+            @AuthenticationPrincipal Long empId) {
 
-        Long empId = (Long) request.getAttribute(ClientTokenProvider.ATTR_EMP_ID);
         log.debug("설문 참여 검증: surveyId={}, empId={}", surveyId, empId);
-
-        SurveyParticipateStatus status =
-                surveyQueryService.checkParticipate(surveyId, empId);
+        SurveyParticipateStatus status = surveyQueryService.checkParticipate(surveyId, empId);
 
         return switch (status) {
             case AVAILABLE     -> ApiResponse.success("참여 가능합니다.");
@@ -64,9 +55,6 @@ public class SurveyApiController {
 
     /**
      * 설문 최종 제출
-     * - empId: ClientTokenFilter 가 주입한 request attribute 에서 추출
-     * - surveyId: @PathVariable 로 전달
-     * - body: SubmitRequest (답변 목록)
      *
      * [검증 계층]
      *  1) @Valid : 형식 검증 (필드 null, 길이 등 — AnswerDto / SubmitRequest)
@@ -77,12 +65,10 @@ public class SurveyApiController {
     public ApiResponse<Void> submit(
             @PathVariable Long surveyId,
             @Valid @RequestBody SubmitRequest request,
-            HttpServletRequest servletRequest) {
+            @AuthenticationPrincipal Long empId) {
 
-        Long empId = (Long) servletRequest.getAttribute(ClientTokenProvider.ATTR_EMP_ID);
         log.info("설문 제출 요청: surveyId={}, empId={}, answerCount={}",
                 surveyId, empId, request.getAnswers().size());
-
         surveySubmitService.submit(surveyId, empId, request);
 
         return ApiResponse.success("설문이 제출되었습니다.");
