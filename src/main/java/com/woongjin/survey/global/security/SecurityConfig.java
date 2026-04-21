@@ -4,10 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woongjin.survey.global.filter.ClientTokenFilter;
 import com.woongjin.survey.global.jwt.ClientTokenProvider;
 import com.woongjin.survey.global.jwt.JwtAuthenticationFilter;
+import com.woongjin.survey.global.response.ApiResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,8 +20,16 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AccessDeniedHandler;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.io.IOException;
+import java.util.List;
 
 /**
  * Spring Security 설정 (JWT 기반)
@@ -47,6 +59,21 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    @Bean
+    public CorsConfigurationSource corsConfig() {
+        CorsConfiguration config = new CorsConfiguration();
+
+        // TODO. 나중에 허용할 외부 도메인이 생기면 추가
+        config.setAllowedOrigins(List.of());
+        config.setAllowedMethods(List.of("GET", "POST"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+        config.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+
     /**
      * 설문 참여자(Client) 전용 체인 — Order(1) 로 먼저 매칭
      *
@@ -65,6 +92,7 @@ public class SecurityConfig {
                 "/api/external/v1/thinkbig/surveys/**",
                 "/surveys/client/**"
             )
+            .cors(c -> c.configurationSource(corsConfig()))
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .headers(h -> h
@@ -75,6 +103,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/surveys/client/intro").permitAll()
                 .anyRequest().authenticated()
+            )
+            .exceptionHandling(ex -> ex
+                .accessDeniedHandler(accessDeniedHandler())
             );
 
         return http.build();
@@ -84,12 +115,14 @@ public class SecurityConfig {
      * 직원(Employee) 전용 체인 — Order(2)
      *
      * - JwtAuthenticationFilter 가 ACCESS_TOKEN 검증 후 SecurityContext 에 UserPrincipal 세팅
-     * - 인증 실패 시 로그인 페이지로 리다이렉트
+     * - 인증 실패(401): 로그인 페이지로 리다이렉트
+     * - 권한 부족(403): JSON 응답
      */
     @Bean
     @Order(2)
     public SecurityFilterChain employeeFilterChain(HttpSecurity http) throws Exception {
         http
+            .cors(c -> c.configurationSource(corsConfig()))
             .csrf(AbstractHttpConfigurer::disable)
             .headers(h -> h
                 .frameOptions(f -> f.disable())
@@ -107,10 +140,31 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((req, res, e) -> res.sendRedirect("/auth/login"))
+                .authenticationEntryPoint(unauthorizedEntryPoint())
+                .accessDeniedHandler(accessDeniedHandler())
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    // 401 인증 실패 — 직원 체인은 Thymeleaf 기반이므로 로그인 페이지로 리다이렉트
+    private AuthenticationEntryPoint unauthorizedEntryPoint() {
+        return (request, response, authException) -> response.sendRedirect("/auth/login");
+    }
+
+    // 403 권한 부족
+    private AccessDeniedHandler accessDeniedHandler() {
+        return (request, response, accessDeniedException) -> {
+            ApiResponse<Object> errorResponse = ApiResponse.error("해당 요청에 대한 접근 권한이 없습니다.");
+            writeJsonResponse(response, HttpServletResponse.SC_FORBIDDEN, errorResponse);
+        };
+    }
+
+    private void writeJsonResponse(HttpServletResponse response, int statusCode, ApiResponse<?> apiResponse) throws IOException {
+        response.setStatus(statusCode);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
     }
 }
