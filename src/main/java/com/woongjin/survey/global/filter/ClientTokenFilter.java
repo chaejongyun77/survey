@@ -83,9 +83,6 @@ public class ClientTokenFilter extends OncePerRequestFilter {
     }
 
     private boolean isApiRequest(HttpServletRequest request) {
-        String accept = request.getHeader("Accept");
-        String uri    = request.getRequestURI();
-        return uri.startsWith("/api/")
-                || (accept != null && accept.contains(MediaType.APPLICATION_JSON_VALUE));
+        return request.getRequestURI().startsWith("/api/");
     }
 }
