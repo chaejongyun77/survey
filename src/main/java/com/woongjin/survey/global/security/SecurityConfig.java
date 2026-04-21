@@ -68,7 +68,7 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .headers(h -> h
-                .frameOptions(AbstractHttpConfigurer::disable)
+                .frameOptions(f -> f.disable())
                 .addHeaderWriter((req, res) -> res.setHeader("X-Frame-Options", "ALLOWALL"))
             )
             .addFilterBefore(clientTokenFilter, UsernamePasswordAuthenticationFilter.class)
@@ -92,7 +92,7 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .headers(h -> h
-                .frameOptions(AbstractHttpConfigurer::disable)
+                .frameOptions(f -> f.disable())
                 .addHeaderWriter((req, res) -> res.setHeader("X-Frame-Options", "SAMEORIGIN"))
             )
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
