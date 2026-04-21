@@ -43,6 +43,12 @@ public class ClientTokenFilter extends OncePerRequestFilter {
     private final ObjectMapper objectMapper;
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        // /surveys/client/intro 는 Client JWT 발급 진입점 — 토큰 없이 접근
+        return request.getRequestURI().equals("/surveys/client/intro");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
