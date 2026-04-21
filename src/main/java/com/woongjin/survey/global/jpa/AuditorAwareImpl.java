@@ -1,7 +1,7 @@
 package com.woongjin.survey.global.jpa;
 
 import com.woongjin.survey.domain.auth.infra.UserPrincipal;
-import com.woongjin.survey.global.filter.ClientTokenFilter;
+import com.woongjin.survey.global.jwt.ClientTokenProvider;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -43,7 +43,7 @@ public class AuditorAwareImpl implements AuditorAware<Long> {
         RequestAttributes attrs = RequestContextHolder.getRequestAttributes();
         if (attrs != null) {
             Object empId = attrs.getAttribute(
-                    ClientTokenFilter.ATTR_EMP_ID, RequestAttributes.SCOPE_REQUEST);
+                    ClientTokenProvider.ATTR_EMP_ID, RequestAttributes.SCOPE_REQUEST);
             if (empId instanceof Long id) return Optional.of(id);
         }
 

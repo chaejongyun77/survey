@@ -44,6 +44,9 @@ public class ClientTokenProvider {
     /** 쿠키 이름 — ClientTokenFilter 와 공유 */
     public static final String COOKIE_NAME = "svy_client_token";
 
+    /** request attribute 키 — ClientTokenFilter 가 심고, 하위 계층(AuditorAware 등)이 읽음 */
+    public static final String ATTR_EMP_ID = "clientEmpId";
+
     @PostConstruct
     public void init() {
         byte[] keyBytes = Base64.getDecoder().decode(clientProperties.getSecret());

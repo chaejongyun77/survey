@@ -40,9 +40,6 @@ import java.nio.charset.StandardCharsets;
 @RequiredArgsConstructor
 public class ClientTokenFilter extends OncePerRequestFilter {
 
-    /** 컨트롤러/서비스에서 attribute 키를 직접 참조할 수 있도록 상수 공개 */
-    public static final String ATTR_EMP_ID = "clientEmpId";
-
     private final ClientTokenProvider clientTokenProvider;
     private final ObjectMapper objectMapper;
 
@@ -61,8 +58,8 @@ public class ClientTokenFilter extends OncePerRequestFilter {
 
         try {
             Claims claims = clientTokenProvider.getClaims(token);
-            request.setAttribute(ATTR_EMP_ID, clientTokenProvider.extractEmpId(claims));
-            log.debug("Client 토큰 검증 성공: empId={}", request.getAttribute(ATTR_EMP_ID));
+            request.setAttribute(ClientTokenProvider.ATTR_EMP_ID, clientTokenProvider.extractEmpId(claims));
+            log.debug("Client 토큰 검증 성공: empId={}", request.getAttribute(ClientTokenProvider.ATTR_EMP_ID));
             chain.doFilter(request, response);
 
         } catch (JwtAuthException e) {

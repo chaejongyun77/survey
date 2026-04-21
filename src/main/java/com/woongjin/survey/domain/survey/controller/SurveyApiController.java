@@ -6,7 +6,7 @@ import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
 import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
 import com.woongjin.survey.domain.survey.service.SurveyQueryService;
 import com.woongjin.survey.domain.survey.service.SurveySubmitService;
-import com.woongjin.survey.global.filter.ClientTokenFilter;
+import com.woongjin.survey.global.jwt.ClientTokenProvider;
 import com.woongjin.survey.global.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -49,7 +49,7 @@ public class SurveyApiController {
             @PathVariable Long surveyId,
             HttpServletRequest request) {
 
-        Long empId = (Long) request.getAttribute(ClientTokenFilter.ATTR_EMP_ID);
+        Long empId = (Long) request.getAttribute(ClientTokenProvider.ATTR_EMP_ID);
         log.debug("설문 참여 검증: surveyId={}, empId={}", surveyId, empId);
 
         SurveyParticipateStatus status =
@@ -79,7 +79,7 @@ public class SurveyApiController {
             @Valid @RequestBody SubmitRequest request,
             HttpServletRequest servletRequest) {
 
-        Long empId = (Long) servletRequest.getAttribute(ClientTokenFilter.ATTR_EMP_ID);
+        Long empId = (Long) servletRequest.getAttribute(ClientTokenProvider.ATTR_EMP_ID);
         log.info("설문 제출 요청: surveyId={}, empId={}, answerCount={}",
                 surveyId, empId, request.getAnswers().size());
 
