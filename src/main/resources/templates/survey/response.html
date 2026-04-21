@@ -113,8 +113,8 @@ document.addEventListener('alpine:init', () => {
     async init() {
       try {
         const [introRes, questionsRes] = await Promise.all([
-          axios.get(`/api/surveys/${SVY_ID}/intro`),
-          axios.get(`/api/surveys/${SVY_ID}/questions`),
+          axios.get(`/api/external/v1/thinkbig/surveys/${SVY_ID}/intro`),
+          axios.get(`/api/external/v1/thinkbig/surveys/${SVY_ID}/questions`),
         ]);
 
         const intro = introRes.data.data;
@@ -317,7 +317,7 @@ document.addEventListener('alpine:init', () => {
     },
 
     async saveDraft() {
-      // TODO: await axios.post(`/api/surveys/${SVY_ID}/draft`, this.buildPayload());
+      // TODO: await axios.post(`/api/external/v1/thinkbig/surveys/${SVY_ID}/draft`, this.buildPayload());
       const now = new Date();
       this.ui.lastSavedAt   = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
       this.ui.showSaveToast = true;
@@ -425,7 +425,7 @@ document.addEventListener('alpine:init', () => {
       try {
         const payload = this.buildPayload();
         console.log('[submit] payload:', JSON.stringify(payload, null, 2));
-        const res = await axios.post(`/api/surveys/${SVY_ID}/submit`, payload);
+        const res = await axios.post(`/api/external/v1/thinkbig/surveys/${SVY_ID}/submit`, payload);
         console.log('[submit] response:', res.status, res.data);
 
         if (res.data?.success) {

@@ -55,9 +55,9 @@ public class SurveyController {
      * [보안]
      * - Redis 토큰은 1회 사용 후 즉시 폐기 → 재사용 불가
      * - Client JWT 는 별도 secretKey 로 서명 → 직원 JWT 와 완전 분리
-     * - 이후 /surveys/response 및 /api/surveys/** 는 Client JWT 로만 접근 가능
+     * - 이후 /surveys/client/response 및 /api/external/v1/thinkbig/surveys/** 는 Client JWT 로만 접근 가능
      */
-    @GetMapping("/intro")
+    @GetMapping("/client/intro")
     public String intro(@RequestParam String token,
                         HttpServletResponse response,
                         Model model) {
@@ -111,7 +111,7 @@ public class SurveyController {
      * - svyId 파라미터 제거: surveyId 는 Client JWT 클레임에서 추출
      * - 실제 인증/권한 검증은 ClientTokenFilter 에서 처리
      */
-    @GetMapping("/response")
+    @GetMapping("/client/response")
     public String response() {
         return "survey/response";
     }

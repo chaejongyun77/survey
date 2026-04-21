@@ -150,11 +150,11 @@
 
                 this.logs = [];
                 this.loading = true;
-                this.addLog(`GET /api/external/v1/admin/auth/survey-check?empNo=${empNo}`, 'info');
+                this.addLog(`GET /api/internal/v1/thinkbig/surveys/check?empNo=${empNo}`, 'info');
 
                 try {
                     const res = await axios.get(
-                        `/api/external/v1/admin/auth/survey-check?empNo=${encodeURIComponent(empNo)}`
+                        `/api/internal/v1/thinkbig/surveys/check?empNo=${encodeURIComponent(empNo)}`
                     );
                     const token = res.data.data;
 
@@ -166,7 +166,7 @@
                     }
 
                     // STEP 2: 토큰으로 iframe URL 구성 후 모달 오픈
-                    const url = `/surveys/intro?token=${token}`;
+                    const url = `/surveys/client/intro?token=${token}`;
                     this.addLog(`iframe 오픈: src="${url}"`, 'success');
                     this.openModal(url);
 

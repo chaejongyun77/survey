@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * 설문 제출 API 요청 바디
  *
- * POST /api/surveys/{surveyId}/submit
+ * POST /api/external/v1/thinkbig/surveys/{surveyId}/submit
  * {
  *   "answers": [
  *     { "questionId": 101, "type": "SINGLE_CHOICE", "selectedItemIds": [501] },

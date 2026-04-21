@@ -117,7 +117,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 || path.startsWith("/js/")
                 || path.startsWith("/images/")
                 // 설문 참여 경로 — ClientTokenFilter 에서 별도 검증하므로 직원 JWT 체크 불필요
-                || path.startsWith("/api/surveys/")
+                || path.startsWith("/api/external/v1/thinkbig/surveys/")
                 || path.startsWith("/surveys/");
     }
 }

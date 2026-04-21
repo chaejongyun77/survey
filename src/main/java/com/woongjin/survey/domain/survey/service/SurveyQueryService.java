@@ -46,7 +46,7 @@ public class SurveyQueryService {
 
     /**
      * 설문 문항 + 옵션 목록 조회
-     * GET /api/surveys/{surveyId}/questions
+     * GET /api/external/v1/thinkbig/surveys/{surveyId}/questions
      */
     @Transactional(readOnly = true)
     public List<QuestionDto> getQuestions(Long surveyId) {
@@ -67,7 +67,7 @@ public class SurveyQueryService {
 
     /**
      * 설문 인트로 화면 데이터 조회
-     * GET /api/surveys/{surveyId}/intro
+     * GET /api/external/v1/thinkbig/surveys/{surveyId}/intro
      */
     @Transactional(readOnly = true)
     public SurveyIntroResponse getIntro(Long surveyId) {

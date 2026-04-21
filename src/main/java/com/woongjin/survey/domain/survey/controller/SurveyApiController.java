@@ -22,7 +22,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/surveys")
+@RequestMapping("/api/external/v1/thinkbig/surveys")
 @RequiredArgsConstructor
 public class SurveyApiController {
 

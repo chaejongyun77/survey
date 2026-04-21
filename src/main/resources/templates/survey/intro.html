@@ -34,7 +34,7 @@
                 }
 
                 try {
-                    const res = await axios.get(`/api/surveys/${this.surveyId}/intro`);
+                    const res = await axios.get(`/api/external/v1/thinkbig/surveys/${this.surveyId}/intro`);
                     this.survey = res.data.data;
                 } catch (e) {
                     console.error('설문 인트로 조회 실패:', e);
@@ -59,7 +59,7 @@
                     alert('설문 정보를 확인할 수 없습니다.');
                     return;
                 }
-                window.location.href = `/surveys/response?surveyId=${this.surveyId}`;
+                window.location.href = `/surveys/client/response?surveyId=${this.surveyId}`;
             },
 
             // ═══════════════════════════════════════════════

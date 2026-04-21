@@ -23,7 +23,7 @@ import java.nio.charset.StandardCharsets;
  * 설문 참여자(Client) 전용 필터
  *
  * [적용 경로] FilterConfig 에서 FilterRegistrationBean 으로 지정
- *   /surveys/response, /api/surveys/*
+ *   /surveys/client/response, /api/external/v1/thinkbig/surveys/*
  *
  * [처리 흐름]
  * 1) 쿠키에서 svy_client_token 추출

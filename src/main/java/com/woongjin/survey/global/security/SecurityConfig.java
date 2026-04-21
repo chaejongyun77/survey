@@ -80,24 +80,29 @@ public class SecurityConfig {
                     "/images/**",
                     "/*.html",
 
-                    // 외부 시스템 연동 API (8081 → 8080)
+                    // 관리자 인증 API (로그인/로그아웃/재발급)
                     "/api/external/v1/admin/auth/**",
 
-                    // 설문 View 페이지
-                    "/surveys/intro",       // 일회성 Redis 토큰 진입점
-                    "/surveys/response",    // ClientTokenFilter 에서 검증
+                    // 내부 시스템 연동 API (8081 → 8080, 직원 JWT 없음)
+                    "/api/internal/v1/thinkbig/surveys/**",
+
+                    // 설문 View 진입점 — Client JWT 발급소 (아직 토큰 없음)
+                    "/surveys/client/intro",
+
+                    // 설문 참여 View — ClientTokenFilter 에서 검증
+                    "/surveys/client/response",
 
                     // 에러 페이지
                     "/error/**"
                 ).permitAll()
 
-                // 설문 참여 API — Security 는 열어두고 ClientTokenFilter 에서 검증 (사용자측면)
-                    .requestMatchers(
-                            "/api/surveys/*/intro",
-                            "/api/surveys/*/questions",
-                            "/api/surveys/*/participate",
-                            "/api/surveys/*/submit"
-                    ).permitAll()
+                // 설문 참여 API — Security 는 열어두고 ClientTokenFilter 에서 검증
+                .requestMatchers(
+                        "/api/external/v1/thinkbig/surveys/*/intro",
+                        "/api/external/v1/thinkbig/surveys/*/questions",
+                        "/api/external/v1/thinkbig/surveys/*/participate",
+                        "/api/external/v1/thinkbig/surveys/*/submit"
+                ).permitAll()
 
                 // 나머지 모든 요청은 직원 JWT 인증 필요
                 .anyRequest().authenticated()

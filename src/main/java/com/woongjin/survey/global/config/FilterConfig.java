@@ -16,8 +16,8 @@ import org.springframework.context.annotation.Configuration;
  *  FilterRegistrationBean 으로 등록하면 적용 URL 패턴을 명시적으로 제한할 수 있음.
  *
  * [URL 패턴 — Servlet 스펙]
- *  /api/surveys/*     → /api/surveys/1/questions, /api/surveys/1/submit 등 모든 하위 경로 포함
- *  /surveys/intro 는 패턴에 포함되지 않으므로 자연스럽게 제외 (Client JWT 발급 진입점)
+ *  /api/external/v1/thinkbig/surveys/*  → /{id}/intro, /{id}/questions, /{id}/submit 등 하위 경로 포함
+ *  /surveys/client/intro 는 패턴에 포함되지 않으므로 자연스럽게 제외 (Client JWT 발급 진입점)
  */
 @Configuration
 @RequiredArgsConstructor
@@ -31,8 +31,8 @@ public class FilterConfig {
         FilterRegistrationBean<ClientTokenFilter> registration = new FilterRegistrationBean<>();
         registration.setFilter(new ClientTokenFilter(clientTokenProvider, objectMapper));
         registration.addUrlPatterns(
-                "/surveys/response",  // 설문 참여 View
-                "/api/surveys/*"      // 설문 참여 REST API
+                "/surveys/client/response",               // 설문 참여 View
+                "/api/external/v1/thinkbig/surveys/*"     // 설문 참여 REST API
         );
         registration.setOrder(1);
         return registration;

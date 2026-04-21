@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/external/v1/admin/auth")
+@RequestMapping("/api/internal/v1/thinkbig/surveys")
 @RequiredArgsConstructor
 public class ExternalSurveyApiController {
 
@@ -21,7 +21,7 @@ public class ExternalSurveyApiController {
     @Value("${demo.internal-api-key}")
     private String internalApiKey;
 
-    @GetMapping("/survey-check")
+    @GetMapping("/check")
     public ApiResponse<String> checkSurvey(
             @RequestParam String empNo
            /* @RequestHeader("X-Internal-Api-Key") String apiKey*/) {
