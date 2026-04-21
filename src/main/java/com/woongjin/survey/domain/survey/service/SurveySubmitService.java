@@ -2,8 +2,8 @@ package com.woongjin.survey.domain.survey.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.woongjin.survey.domain.survey.domain.Answer;
 import com.woongjin.survey.domain.survey.domain.SurveyQuestion;
-import com.woongjin.survey.domain.survey.domain.SurveyResponse;
 import com.woongjin.survey.domain.survey.dto.submit.AnswerDto;
 import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
 import com.woongjin.survey.domain.survey.repository.SurveyQuestionRepository;
@@ -76,7 +76,7 @@ public class SurveySubmitService {
         // ⑤ DB INSERT
         //    - AuditorAwareImpl 이 request attribute(clientEmpId) 에서 empId 를 읽어
         //      FRST_CRTN_ID / RCNT_UPDT_ID 자동 세팅 (SecurityContext 조작 불필요)
-        SurveyResponse response = SurveyResponse.builder()
+        Answer response = Answer.builder()
                 .surveyId(surveyId)
                 .empId(empId)
                 .answers(answersJson)

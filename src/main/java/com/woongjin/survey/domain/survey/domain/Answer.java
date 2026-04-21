@@ -22,7 +22,7 @@ import lombok.NoArgsConstructor;
                 columnNames = {"SVY_ID", "EMP_ID"}
         )
 )
-public class SurveyResponse extends BaseEntity {
+public class Answer extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

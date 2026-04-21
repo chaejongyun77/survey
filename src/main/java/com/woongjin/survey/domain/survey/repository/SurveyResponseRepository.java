@@ -1,9 +1,9 @@
 package com.woongjin.survey.domain.survey.repository;
 
-import com.woongjin.survey.domain.survey.domain.SurveyResponse;
+import com.woongjin.survey.domain.survey.domain.Answer;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface SurveyResponseRepository extends JpaRepository<SurveyResponse, Long> {
+public interface SurveyResponseRepository extends JpaRepository<Answer, Long> {
 
     /**
      * 중복 응답 여부 확인

@@ -22,20 +22,23 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class SurveyCreateService {
 
-    private final EmployeeRepository employeeRepository;
-    private final SurveyQueryService surveyQueryService;
-    private final SurveyTokenRepository surveyTokenRepository;
+    private final EmployeeRepository     employeeRepository;
+    private final SurveyQueryService     surveyQueryService;
+    private final SurveyTokenRepository  surveyTokenRepository;
 
     /**
      * 사원번호 기반 설문 토큰 발급
      *
-     * 1) empNo → Employee 조회 (없으면 설문 없음)
-     * 2) 진행중 설문 조회 (없으면 설문 없음)
-     * 3) 토큰 발급 후 Redis 저장 (TTL 1분)
+     * [검증 순서]
+     * 1) empNo → Employee 조회 (없으면 발급 거부)
+     * 2) 진행중 + 대상자로 등록된 설문 조회 (없으면 발급 거부)
+     * 3) 이미 응답 완료 여부 확인 (완료했으면 발급 거부)
+     * 4) 토큰 발급 후 Redis 저장 (TTL 1분)
      */
     @Transactional
     public ApiResponse<String> issue(String empNo) {
 
+        // 1) Employee 조회
         Optional<Employee> employeeOpt = employeeRepository.findByEmpNo(empNo);
         if (employeeOpt.isEmpty()) {
             log.debug("설문 토큰 발급 거부: 존재하지 않는 사원번호 empNo={}", empNo);
@@ -44,6 +47,7 @@ public class SurveyCreateService {
 
         Employee employee = employeeOpt.get();
 
+        // 2) 진행중 설문 조회 (기간, 상태, 대상자 등록 여부 포함)
         Optional<SurveyIntroResponse> surveyOpt = surveyQueryService.findActiveSurveyByEmpId(employee.getId());
         if (surveyOpt.isEmpty()) {
             log.debug("설문 토큰 발급 거부: 진행중인 설문 없음 empNo={}, empId={}", empNo, employee.getId());
