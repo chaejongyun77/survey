@@ -42,7 +42,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
 
-    private static final String ACCESS_TOKEN_COOKIE = "ACCESS_TOKEN";
+    public static final String ACCESS_TOKEN_COOKIE = "ACCESS_TOKEN";
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
 

@@ -5,6 +5,7 @@ import com.woongjin.survey.domain.auth.service.AuthService;
 import com.woongjin.survey.domain.auth.service.TokenResponse;
 import com.woongjin.survey.global.cookie.CookieUtil;
 import com.woongjin.survey.global.jwt.JwtAuthException;
+import com.woongjin.survey.global.jwt.JwtAuthenticationFilter;
 import com.woongjin.survey.global.jwt.JwtErrorCode;
 import com.woongjin.survey.global.jwt.JwtProperties;
 import com.woongjin.survey.global.response.ApiResponse;
@@ -26,7 +27,7 @@ public class AuthCommandController {
     private final AuthService authService;
     private final JwtProperties jwtProperties;
 
-    private static final String ACCESS_TOKEN_COOKIE = "ACCESS_TOKEN";
+    private static final String ACCESS_TOKEN_COOKIE = JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE;
     private static final String REFRESH_TOKEN_COOKIE = "REFRESH_TOKEN";
 
     /**
