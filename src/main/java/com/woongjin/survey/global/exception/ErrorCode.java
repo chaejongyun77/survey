@@ -19,6 +19,7 @@ public enum ErrorCode {
     SURVEY_NOT_TARGET("설문 대상자가 아닙니다."),
     SURVEY_ALREADY_DONE("이미 참여한 설문입니다."),
     SURVEY_HAS_TEMP_SAVE("임시저장된 설문이 있습니다."),
+    SURVEY_TOKEN_INVALID("유효하지 않은 접근입니다."),
 
     // ── 설문 제출 검증 ──────────────────────────────────
     ANSWER_INVALID_QUESTION("존재하지 않는 문항입니다."),

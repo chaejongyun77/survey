@@ -4,6 +4,7 @@ import com.woongjin.survey.domain.survey.domain.SurveyParticipateStatus;
 import com.woongjin.survey.domain.survey.dto.QuestionDto;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
 import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
+import com.woongjin.survey.domain.survey.service.SurveyParticipationValidator;
 import com.woongjin.survey.domain.survey.service.SurveyQueryService;
 import com.woongjin.survey.domain.survey.service.SurveySubmitService;
 import com.woongjin.survey.global.response.ApiResponse;
@@ -23,10 +24,11 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/external/v1/thinkbig/surveys")
 @RequiredArgsConstructor
-public class SurveyApiController {
+public class SurveyQueryController {
 
-    private final SurveyQueryService surveyQueryService;
-    private final SurveySubmitService surveySubmitService;
+    private final SurveyQueryService           surveyQueryService;
+    private final SurveySubmitService          surveySubmitService;
+    private final SurveyParticipationValidator participationValidator;
 
     @GetMapping("/{surveyId}/intro")
     public ApiResponse<SurveyIntroResponse> getIntro(@PathVariable Long surveyId) {
@@ -44,7 +46,7 @@ public class SurveyApiController {
             @AuthenticationPrincipal Long empId) {
 
         log.debug("설문 참여 검증: surveyId={}, empId={}", surveyId, empId);
-        SurveyParticipateStatus status = surveyQueryService.checkParticipate(surveyId, empId);
+        SurveyParticipateStatus status = participationValidator.checkParticipate(surveyId, empId);
 
         return switch (status) {
             case AVAILABLE     -> ApiResponse.success("참여 가능합니다.");

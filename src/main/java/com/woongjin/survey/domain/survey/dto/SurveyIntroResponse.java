@@ -27,5 +27,8 @@ public class SurveyIntroResponse {
 
     /** 설문 대상자 수 (svy_trpsn_tb COUNT) */
     private long targetCount;
+
+    /** 설문 문항 수 (svy_qst_tb COUNT, 미삭제 기준) */
+    private long questionCount;
 }
 

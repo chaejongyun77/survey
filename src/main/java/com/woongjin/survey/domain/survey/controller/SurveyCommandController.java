@@ -1,6 +1,6 @@
 package com.woongjin.survey.domain.survey.controller;
 
-import com.woongjin.survey.domain.survey.service.SurveyCreateService;
+import com.woongjin.survey.domain.survey.service.SurveyCommandService;
 import com.woongjin.survey.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,9 +14,9 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/internal/v1/thinkbig/surveys")
 @RequiredArgsConstructor
-public class ExternalSurveyApiController {
+public class SurveyCommandController {
 
-    private final SurveyCreateService surveyCreateService;
+    private final SurveyCommandService surveyCommandService;
 
     @Value("${demo.internal-api-key}")
     private String internalApiKey;
@@ -32,6 +32,6 @@ public class ExternalSurveyApiController {
         }*/
 
         log.info("외부 설문 체크 요청: empNo={}", empNo);
-        return surveyCreateService.issue(empNo);
+        return surveyCommandService.issue(empNo);
     }
 }

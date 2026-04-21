@@ -3,6 +3,7 @@ package com.woongjin.survey.domain.survey.repository;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.woongjin.survey.domain.survey.domain.QSurvey;
+import com.woongjin.survey.domain.survey.domain.QSurveyQuestion;
 import com.woongjin.survey.domain.survey.domain.QSurveyTargetPerson;
 import com.woongjin.survey.domain.survey.domain.enums.SurveyStatus;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
@@ -21,8 +22,9 @@ public class SurveyRepositoryImpl implements SurveyRepositoryCustom {
     @Override
     public Optional<SurveyIntroResponse> findIntroById(Long surveyId) {
 
-        QSurvey s = QSurvey.survey;
-        QSurveyTargetPerson tp = QSurveyTargetPerson.surveyTargetPerson;
+        QSurvey s               = QSurvey.survey;
+        QSurveyTargetPerson tp  = QSurveyTargetPerson.surveyTargetPerson;
+        QSurveyQuestion q       = QSurveyQuestion.surveyQuestion;
 
         SurveyIntroResponse result = queryFactory
                 .select(Projections.constructor(SurveyIntroResponse.class,
@@ -34,7 +36,12 @@ public class SurveyRepositoryImpl implements SurveyRepositoryCustom {
                         com.querydsl.jpa.JPAExpressions
                                 .select(tp.count())
                                 .from(tp)
-                                .where(tp.survey.id.eq(surveyId))
+                                .where(tp.survey.id.eq(surveyId)),
+                        // 문항 수 서브쿼리 (미삭제 기준)
+                        com.querydsl.jpa.JPAExpressions
+                                .select(q.count())
+                                .from(q)
+                                .where(q.surveyId.eq(surveyId), q.deletedAt.isNull())
                 ))
                 .from(s)
                 .where(
@@ -50,8 +57,9 @@ public class SurveyRepositoryImpl implements SurveyRepositoryCustom {
     @Override
     public Optional<SurveyIntroResponse> findActiveByEmpId(Long empId) {
 
-        QSurvey s = QSurvey.survey;
-        QSurveyTargetPerson tp = QSurveyTargetPerson.surveyTargetPerson;
+        QSurvey s               = QSurvey.survey;
+        QSurveyTargetPerson tp  = QSurveyTargetPerson.surveyTargetPerson;
+        QSurveyQuestion q       = QSurveyQuestion.surveyQuestion;
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -61,10 +69,16 @@ public class SurveyRepositoryImpl implements SurveyRepositoryCustom {
                         s.title,
                         s.beginDate,
                         s.endDate,
+                        // 대상자 수 서브쿼리
                         com.querydsl.jpa.JPAExpressions
                                 .select(tp.count())
                                 .from(tp)
-                                .where(tp.survey.id.eq(s.id))
+                                .where(tp.survey.id.eq(s.id)),
+                        // 문항 수 서브쿼리 (미삭제 기준)
+                        com.querydsl.jpa.JPAExpressions
+                                .select(q.count())
+                                .from(q)
+                                .where(q.surveyId.eq(s.id), q.deletedAt.isNull())
                 ))
                 .from(s)
                 .join(tp).on(tp.survey.id.eq(s.id).and(tp.employee.id.eq(empId)))

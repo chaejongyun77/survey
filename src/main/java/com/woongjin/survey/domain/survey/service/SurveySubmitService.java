@@ -38,11 +38,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SurveySubmitService {
 
-    private final SurveyQuestionRepository    surveyQuestionRepository;
-    private final SurveyResponseRepository    surveyResponseRepository;
-    private final SurveyQueryService          surveyQueryService;
-    private final SurveyAnswerValidator       answerValidator;
-    private final ObjectMapper                objectMapper;
+    private final SurveyQuestionRepository       surveyQuestionRepository;
+    private final SurveyResponseRepository       surveyResponseRepository;
+    private final SurveyParticipationValidator   participationValidator;
+    private final SurveyAnswerValidator          answerValidator;
+    private final ObjectMapper                   objectMapper;
 
     /**
      * 설문 최종 제출
@@ -58,7 +58,7 @@ public class SurveySubmitService {
                 surveyId, empId, request.getAnswers().size());
 
         // ① 참여 가능 여부 재검증
-        surveyQueryService.checkParticipate(surveyId, empId);
+        participationValidator.checkParticipate(surveyId, empId);
         log.info("[submit] ① 참여 가능 검증 통과");
 
         // ② 문항 목록 조회 (옵션 포함)
