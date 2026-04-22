@@ -1,8 +1,6 @@
 package com.woongjin.survey.global.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.woongjin.survey.domain.auth.service.AuthService;
-import com.woongjin.survey.domain.auth.service.TokenResponse;
 import com.woongjin.survey.global.cookie.CookieUtil;
 import com.woongjin.survey.global.response.ApiResponse;
 import jakarta.servlet.FilterChain;
@@ -11,7 +9,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,16 +25,9 @@ import java.nio.charset.StandardCharsets;
  * 동작 흐름:
  * 1) 토큰 추출 (쿠키 우선 → 헤더 fallback)
  * 2) 토큰 없으면 → 통과 (비인증 상태, Security가 접근 제어)
- * 3) 토큰 있으면 → getClaims() 호출 (검증 + 파싱 동시)
+ * 3) 토큰 있으면 → 검증
  *    - 성공: SecurityContext에 인증 정보 세팅 후 통과
- *    - 만료(TOKEN_EXPIRED): Refresh Token으로 재발급 시도
- *      - 성공: 새 토큰 쿠키 세팅 → SecurityContext 세팅 → 통과
- *      - 실패: 401 응답
- *    - 그 외 실패: 401 응답
- *
- * [순환참조 방지]
- * AuthService → AuthenticationManager → SecurityConfig → JwtAuthenticationFilter
- * → ObjectProvider<AuthService>로 런타임 지연 조회하여 초기화 시점 순환 차단
+ *    - 실패: 401 JSON 응답 (재발급은 클라이언트 api.js 인터셉터가 담당)
  */
 @Slf4j
 @Component
@@ -46,8 +36,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
-    private final JwtProperties jwtProperties;
-    private final ObjectProvider<AuthService> authServiceProvider;
 
     public static final String ACCESS_TOKEN_COOKIE  = "ACCESS_TOKEN";
     public static final String REFRESH_TOKEN_COOKIE = "REFRESH_TOKEN";
@@ -68,42 +56,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 log.debug("JWT 인증 성공: {}", authentication.getName());
 
             } catch (JwtAuthException e) {
-                if (e.getErrorCode() == JwtErrorCode.TOKEN_EXPIRED) {
-                    if (tryReissue(request, response, filterChain)) return;
-                }
                 sendErrorResponse(response, e.getErrorCode());
                 return;
             }
         }
 
         filterChain.doFilter(request, response);
-    }
-
-    private boolean tryReissue(HttpServletRequest request,
-                               HttpServletResponse response,
-                               FilterChain filterChain) throws ServletException, IOException {
-
-        String refreshToken = CookieUtil.extract(request, REFRESH_TOKEN_COOKIE);
-        if (refreshToken == null) return false;
-
-        try {
-            TokenResponse newTokens = authServiceProvider.getObject().reissue(refreshToken);
-
-            CookieUtil.addCookie(response, ACCESS_TOKEN_COOKIE,
-                    newTokens.accessToken(), jwtProperties.getAccessExpiration());
-            CookieUtil.addCookie(response, REFRESH_TOKEN_COOKIE,
-                    newTokens.refreshToken(), jwtProperties.getRefreshExpiration());
-
-            Authentication auth = jwtTokenProvider.getAuthentication(newTokens.accessToken());
-            SecurityContextHolder.getContext().setAuthentication(auth);
-
-            filterChain.doFilter(request, response);
-            return true;
-
-        } catch (Exception e) {
-            log.warn("재발급 실패: {}", e.getMessage());
-            return false;
-        }
     }
 
     private void sendErrorResponse(HttpServletResponse response, JwtErrorCode errorCode) throws IOException {

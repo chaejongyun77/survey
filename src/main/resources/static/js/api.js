@@ -21,7 +21,19 @@ api.interceptors.response.use(
         break;
 
       case 401:
-        alert(data?.message);
+        if (!error.config._retry) {
+          error.config._retry = true;
+          try {
+            await axios.post("/api/external/v1/admin/auth/reissue", {}, { withCredentials: true });
+            return api.request(error.config);
+          } catch {
+            alert("세션이 만료되었습니다. 다시 로그인해주세요.");
+            location.href = "/auth/login";
+          }
+        } else {
+          alert("세션이 만료되었습니다. 다시 로그인해주세요.");
+          location.href = "/auth/login";
+        }
         break;
 
       case 403:
