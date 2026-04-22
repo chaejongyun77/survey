@@ -554,20 +554,12 @@ document.addEventListener('alpine:init', () => {
                     :class="q.isBranch
                       ? 'bg-orange-50 text-orange-500 border border-orange-200'
                       : 'bg-orange-50 text-orange-500'"
-                    x-text="q.isBranch ? `문항 ${getDisplayNo(q)} · 조건 분기` : `문항 ${getDisplayNo(q)}`">
+                    x-text="q.isBranch ? `문항 ${getDisplayNo(q)}` : `문항 ${getDisplayNo(q)}`">
               </span>
               <span x-show="q.esntlYn" class="text-xs text-red-400 font-medium">필수</span>
               <span class="text-xs text-gray-400">·</span>
               <span class="text-xs text-gray-400" x-text="typeLabel(q.qstTyCd)"></span>
-              <!-- 분기 유발 뱃지 -->
-              <span x-show="q.childQuestionId"
-                    class="text-xs bg-orange-50 text-orange-500 border border-orange-200
-                           px-2 py-0.5 rounded-md ml-auto flex items-center gap-1">
-                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 9l3 3-3 3M6 12h10"/>
-                </svg>
-                선택 시 추가 문항
-              </span>
+
             </div>
             <p class="text-gray-800 font-semibold text-base leading-snug" x-text="q.qstCn"></p>
           </div>
@@ -695,7 +687,7 @@ document.addEventListener('alpine:init', () => {
                        enabled:bg-orange-500 enabled:hover:bg-orange-600 enabled:hover:shadow-lg"
                 @click="submitSurvey"
                 :disabled="ui.isSubmitting">
-          <span x-show="!ui.isSubmitting">설문 제출하기 ✓</span>
+          <span x-show="!ui.isSubmitting">설문 제출하기</span>
           <span x-show="ui.isSubmitting" class="flex items-center justify-center gap-2">
             <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="white" stroke-width="4"/>

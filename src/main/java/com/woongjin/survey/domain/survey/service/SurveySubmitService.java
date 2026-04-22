@@ -62,7 +62,7 @@ public class SurveySubmitService {
         log.info("[submit] ① 참여 가능 검증 통과");
 
         // ② 문항 목록 조회 (옵션 포함)
-        List<SurveyQuestion> questions = surveyQuestionRepository.findBySurveyIdWithItems(surveyId);
+        List<SurveyQuestion> questions = surveyQuestionRepository.findBySurveyIdAndDeletedAtIsNullOrderBySortOrderAsc(surveyId);
         log.info("[submit] ② 문항 조회 완료: questions.size={}", questions.size());
 
         // ③ 답변 비즈니스 검증 (최종 제출이므로 strict=true)

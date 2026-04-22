@@ -44,7 +44,7 @@ public class SurveyQueryService {
             throw new BusinessException(ErrorCode.SURVEY_NOT_FOUND);
         }
 
-        return surveyQuestionRepository.findBySurveyIdWithItems(surveyId)
+        return surveyQuestionRepository.findBySurveyIdAndDeletedAtIsNullOrderBySortOrderAsc(surveyId)
                 .stream()
                 .map(QuestionDto::from)
                 .toList();
