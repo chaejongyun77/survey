@@ -71,12 +71,12 @@ public class SurveyQueryService {
     // =============================================
 
     /**
-     * 사원 ID 기준 진행중 설문 조회
+     * 사원 ID 기준 진행중 설문 ID 조회
      * - 8081 설문 체크 흐름에서 사용
      */
     @Transactional(readOnly = true)
-    public Optional<SurveyIntroResponse> findActiveSurveyByEmpId(Long empId) {
-        return surveyRepository.findActiveByEmpId(empId);
+    public Optional<Long> findActiveSurveyIdByEmpId(Long empId) {
+        return surveyRepository.findActiveSurveyIdByEmpId(empId);
     }
 }
 

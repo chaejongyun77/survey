@@ -7,6 +7,7 @@ import com.woongjin.survey.domain.survey.domain.QSurveyQuestion;
 import com.woongjin.survey.domain.survey.domain.QSurveyTargetPerson;
 import com.woongjin.survey.domain.survey.domain.enums.SurveyStatus;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -55,31 +56,15 @@ public class SurveyRepositoryImpl implements SurveyRepositoryCustom {
     }
 
     @Override
-    public Optional<SurveyIntroResponse> findActiveByEmpId(Long empId) {
+    public Optional<Long> findActiveSurveyIdByEmpId(Long empId) {
 
-        QSurvey s               = QSurvey.survey;
-        QSurveyTargetPerson tp  = QSurveyTargetPerson.surveyTargetPerson;
-        QSurveyQuestion q       = QSurveyQuestion.surveyQuestion;
+        QSurvey s              = QSurvey.survey;
+        QSurveyTargetPerson tp = QSurveyTargetPerson.surveyTargetPerson;
 
         LocalDateTime now = LocalDateTime.now();
 
-        SurveyIntroResponse result = queryFactory
-                .select(Projections.constructor(SurveyIntroResponse.class,
-                        s.id,
-                        s.title,
-                        s.beginDate,
-                        s.endDate,
-                        // 대상자 수 서브쿼리
-                        com.querydsl.jpa.JPAExpressions
-                                .select(tp.count())
-                                .from(tp)
-                                .where(tp.survey.id.eq(s.id)),
-                        // 문항 수 서브쿼리 (미삭제 기준)
-                        com.querydsl.jpa.JPAExpressions
-                                .select(q.count())
-                                .from(q)
-                                .where(q.surveyId.eq(s.id), q.deletedAt.isNull())
-                ))
+        Long surveyId = queryFactory
+                .select(s.id)
                 .from(s)
                 .join(tp).on(tp.survey.id.eq(s.id).and(tp.employee.id.eq(empId)))
                 .where(
@@ -91,6 +76,6 @@ public class SurveyRepositoryImpl implements SurveyRepositoryCustom {
                 )
                 .fetchFirst();
 
-        return Optional.ofNullable(result);
+        return Optional.ofNullable(surveyId);
     }
 }

@@ -3,7 +3,6 @@ package com.woongjin.survey.domain.survey.service;
 import com.woongjin.survey.domain.employee.domain.Employee;
 import com.woongjin.survey.domain.employee.repository.EmployeeRepository;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResult;
-import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
 import com.woongjin.survey.domain.survey.infra.SurveyTokenRepository;
 import com.woongjin.survey.global.exception.BusinessException;
 import com.woongjin.survey.global.exception.ErrorCode;
@@ -54,21 +53,21 @@ public class SurveyCommandService {
                 });
 
         // 2) 진행중 설문 조회 (기간, 상태, 대상자 등록 여부 포함)
-        SurveyIntroResponse survey = surveyQueryService.findActiveSurveyByEmpId(employee.getId())
+        Long surveyId = surveyQueryService.findActiveSurveyIdByEmpId(employee.getId())
                 .orElseThrow(() -> {
                     log.debug("설문 토큰 발급 거부: 진행중인 설문 없음 empNo={}, empId={}", empNo, employee.getId());
                     return new BusinessException(ErrorCode.SURVEY_NOT_FOUND);
                 });
 
         // 3) 이미 응답 완료 여부 확인
-        if (participationValidator.hasAlreadySubmitted(survey.getSurveyId(), employee.getId())) {
-            log.debug("설문 토큰 발급 거부: 이미 응답 완료 empNo={}, surveyId={}", empNo, survey.getSurveyId());
+        if (participationValidator.hasAlreadySubmitted(surveyId, employee.getId())) {
+            log.debug("설문 토큰 발급 거부: 이미 응답 완료 empNo={}, surveyId={}", empNo, surveyId);
             throw new BusinessException(ErrorCode.SURVEY_ALREADY_DONE);
         }
 
         // 4) Redis 토큰 발급
-        String token = surveyTokenRepository.save(empNo, survey.getSurveyId());
-        log.info("설문 토큰 발급 완료: empNo={}, surveyId={}", empNo, survey.getSurveyId());
+        String token = surveyTokenRepository.save(empNo, surveyId);
+        log.info("설문 토큰 발급 완료: empNo={}, surveyId={}", empNo, surveyId);
 
         return ApiResponse.success("설문 토큰 발급 성공", token);
     }

@@ -16,13 +16,13 @@ public interface SurveyRepositoryCustom {
     Optional<SurveyIntroResponse> findIntroById(Long surveyId);
 
     /**
-     * 특정 사원(empId)이 대상자로 등록된 현재 진행중인 설문 조회
+     * 특정 사원(empId)이 대상자로 등록된 현재 진행중인 설문 ID 조회
      * - BGN_DT <= now <= END_DT
-     * - useYn = true, deletedDate IS NULL
+     * - useYn = true, deletedDate IS NULL, status = APPROVED
      * - svy_trpsn_tb에 empId가 존재
      *
      * @param empId 직원 PK (EMP_ID)
-     * @return 진행중인 설문 인트로 응답 (없으면 empty)
+     * @return 진행중인 설문 ID (없으면 empty)
      */
-    Optional<SurveyIntroResponse> findActiveByEmpId(Long empId);
+    Optional<Long> findActiveSurveyIdByEmpId(Long empId);
 }
