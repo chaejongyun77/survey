@@ -8,6 +8,7 @@ import com.woongjin.survey.domain.survey.repository.SurveyResponseRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyTargetPersonRepository;
 import com.woongjin.survey.global.exception.BusinessException;
 import com.woongjin.survey.global.exception.ErrorCode;
+import com.woongjin.survey.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -51,7 +52,7 @@ public class SurveyParticipationValidator {
      * - 성공 시 SurveyParticipateStatus 반환
      */
     @Transactional(readOnly = true)
-    public SurveyParticipateStatus checkParticipate(Long surveyId, Long empId) {
+    public ApiResponse<Void> checkParticipate(Long surveyId, Long empId) {
 
         // 1. 설문 존재 여부
         Survey survey = surveyRepository.findById(surveyId)
@@ -84,7 +85,7 @@ public class SurveyParticipationValidator {
             throw new BusinessException(ErrorCode.SURVEY_ALREADY_DONE);
         }
 
-        return SurveyParticipateStatus.AVAILABLE;
+        return ApiResponse.success("설문 참여");
     }
 
     /**

@@ -127,13 +127,30 @@
                 window.parent.postMessage({ action: 'CLOSE_SURVEY_MODAL' }, '*');
             },
 
-            /** "참여하기" → iframe 내부에서 설문 참여 페이지로 이동 */
-            onStart() {
+            /** "참여하기" → 참여 가능 여부 검증 후 설문 참여 페이지로 이동 */
+            async onStart() {
                 if (!this.surveyId) {
                     alert('설문 정보를 확인할 수 없습니다.');
                     return;
                 }
-                window.location.href = `/surveys/client/response?surveyId=${this.surveyId}`;
+
+                try {
+                    const res = await axios.post(
+                        `/api/external/v1/thinkbig/surveys/${this.surveyId}/participate`
+                    );
+
+                    if (!res.data.success) {
+                        alert(res.data.message);
+                        return;
+                    }
+
+                    // 참여 가능 → 응답 페이지로 이동
+                    window.location.href = `/surveys/client/response?surveyId=${this.surveyId}`;
+
+                } catch (e) {
+                    console.error('참여 검증 실패:', e);
+                    alert('일시적인 오류가 발생했습니다.');
+                }
             },
 
             formatPeriod(beginDate, endDate) {

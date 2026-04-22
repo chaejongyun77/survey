@@ -46,13 +46,7 @@ public class SurveyQueryController {
             @AuthenticationPrincipal Long empId) {
 
         log.debug("설문 참여 검증: surveyId={}, empId={}", surveyId, empId);
-        SurveyParticipateStatus status = participationValidator.checkParticipate(surveyId, empId);
-
-        return switch (status) {
-            case AVAILABLE     -> ApiResponse.success("참여 가능합니다.");
-            case HAS_TEMP_SAVE -> ApiResponse.success("임시저장된 설문이 있습니다.");
-            default            -> ApiResponse.success("참여 가능합니다.");
-        };
+        return participationValidator.checkParticipate(surveyId, empId);
     }
 
     /**
