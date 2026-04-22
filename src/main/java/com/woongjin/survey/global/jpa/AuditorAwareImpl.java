@@ -14,7 +14,6 @@ import java.util.Optional;
  * [인증 주체별 처리]
  * - UserPrincipal : 직원 — JwtAuthenticationFilter 가 SecurityContext 에 세팅
  * - Long          : 설문 참여자 — ClientTokenFilter 가 SecurityContext 에 세팅
- * - "system"      : 배치/내부 처리 전용 (empId = 0)
  */
 @Component
 public class AuditorAwareImpl implements AuditorAware<Long> {
@@ -26,10 +25,6 @@ public class AuditorAwareImpl implements AuditorAware<Long> {
         if (authentication == null || !authentication.isAuthenticated()
                 || "anonymousUser".equals(authentication.getPrincipal())) {
             return Optional.empty();
-        }
-
-        if ("system".equals(authentication.getPrincipal())) {
-            return Optional.of(0L);
         }
 
         if (authentication.getPrincipal() instanceof UserPrincipal userPrincipal) {
