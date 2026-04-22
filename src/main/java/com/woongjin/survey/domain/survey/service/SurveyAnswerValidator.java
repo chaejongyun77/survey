@@ -92,21 +92,26 @@ public class SurveyAnswerValidator {
 
     private Set<Long> calculateActiveQuestions(List<SurveyQuestion> questions,
                                                Map<Long, AnswerDto> answerMap) {
+        // 역방향 인덱스: childQuestionId → 부모 문항 (O(N)에 한 번만 구축)
+        // 이후 분기 문항마다 O(1) 조회 → 전체 O(N)
+        Map<Long, SurveyQuestion> parentByChildId = questions.stream()
+                .filter(q -> q.getChildQuestionId() != null)
+                .collect(Collectors.toMap(
+                        SurveyQuestion::getChildQuestionId,
+                        q -> q
+                ));
+
         Set<Long> active = new HashSet<>();
 
-        // 분기 없는 문항은 모두 활성
         for (SurveyQuestion q : questions) {
+            // 분기 없는 문항은 항상 활성
             if (q.getParentItemId() == null) {
                 active.add(q.getId());
+                continue;
             }
-        }
 
-        // 분기 문항은 부모 답변 확인
-        for (SurveyQuestion q : questions) {
-            if (q.getParentItemId() == null) continue;
-
-            // 이 문항을 활성화시키는 부모 문항 찾기 (childQuestionId 로 역추적)
-            SurveyQuestion parent = findParentQuestion(questions, q.getId());
+            // 분기 문항은 부모 답변 확인
+            SurveyQuestion parent = parentByChildId.get(q.getId());
             if (parent == null) continue;
 
             AnswerDto parentAnswer = answerMap.get(parent.getId());
@@ -119,13 +124,6 @@ public class SurveyAnswerValidator {
         }
 
         return active;
-    }
-
-    private SurveyQuestion findParentQuestion(List<SurveyQuestion> questions, Long childId) {
-        return questions.stream()
-                .filter(q -> childId.equals(q.getChildQuestionId()))
-                .findFirst()
-                .orElse(null);
     }
 
     // ─────────────────────────────────────────────────────────────
