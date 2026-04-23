@@ -83,24 +83,62 @@
                 </button>
                 <button
                     type="button"
-                    class="flex-[2] py-4 bg-[#FF6A00] text-white font-bold rounded-xl text-base transition-colors hover:bg-[#E55E00] focus:outline-none focus:ring-2 focus:ring-[#FF6A00] focus:ring-offset-2"
+                    class="flex-[2] py-4 bg-[#FF6A00] text-white font-bold rounded-xl text-base transition-colors hover:bg-[#E55E00] focus:outline-none focus:ring-2 focus:ring-[#FF6A00] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     @click="onStart"
+                    :disabled="isStarting"
                 >
-                    참여하기
+                    <span x-show="!isStarting">참여하기</span>
+                    <span x-show="isStarting" class="flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="white" stroke-width="4"/>
+                            <path class="opacity-75" fill="white" d="M4 12a8 8 0 018-8v8z"/>
+                        </svg>
+                        확인 중...
+                    </span>
                 </button>
             </footer>
 
         </div>
     </template>
+
+    <!-- 임시저장 확인 모달 -->
+    <div x-show="showDraftModal" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div class="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center mx-auto mb-4">
+                <svg class="w-6 h-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                </svg>
+            </div>
+            <h2 class="text-center text-gray-900 font-bold text-lg mb-1">이어서 작성하시겠습니까?</h2>
+            <p class="text-center text-gray-500 text-sm mb-6">이전에 임시저장된 내용이 있습니다.</p>
+            <div class="flex gap-3">
+                <button @click="onFresh"
+                        class="flex-1 py-3 bg-gray-100 text-gray-600 font-semibold rounded-xl text-sm
+                               hover:bg-gray-200 transition-colors">
+                    새로 시작
+                </button>
+                <button @click="onResume"
+                        class="flex-[2] py-3 bg-[#FF6A00] text-white font-semibold rounded-xl text-sm
+                               hover:bg-[#E55E00] transition-colors">
+                    이어서 작성
+                </button>
+            </div>
+        </div>
+    </div>
+
 </article>
 
 <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('surveyIntro', () => ({
-            survey:    {},
-            surveyId:  null,
-            isLoading: true,
-            isError:   false,
+            survey:         {},
+            surveyId:       null,
+            isLoading:      true,
+            isError:        false,
+            isStarting:     false,
+            showDraftModal: false,
 
             async init() {
                 this.surveyId = this.$el.dataset.surveyId ?? null;
@@ -127,30 +165,64 @@
                 window.parent.postMessage({ action: 'CLOSE_SURVEY_MODAL' }, '*');
             },
 
-            /** "참여하기" → 참여 가능 여부 검증 후 설문 참여 페이지로 이동 */
+            /** "참여하기" → ① 참여 가능 검증 → ② 임시저장 여부 확인 → ③ 이동 또는 모달 */
             async onStart() {
                 if (!this.surveyId) {
                     alert('설문 정보를 확인할 수 없습니다.');
                     return;
                 }
 
+                this.isStarting = true;
                 try {
+                    // ① 참여 가능 여부 검증
                     const res = await axios.post(
                         `/api/external/v1/thinkbig/surveys/${this.surveyId}/participate`
                     );
-
                     if (!res.data.success) {
                         alert(res.data.message);
                         return;
                     }
 
-                    // 참여 가능 → 응답 페이지로 이동
-                    window.location.href = `/surveys/client/response?surveyId=${this.surveyId}`;
+                    // ② 임시저장 존재 여부 확인
+                    const draftRes = await axios.get(
+                        `/api/external/v1/thinkbig/surveys/${this.surveyId}/draft`
+                    );
+                    const hasDraft = Array.isArray(draftRes.data?.data) && draftRes.data.data.length > 0;
 
+                    if (hasDraft) {
+                        // ③-A 임시저장 있음 → 모달 표시
+                        this.showDraftModal = true;
+                    } else {
+                        // ③-B 임시저장 없음 → 바로 이동
+                        this.navigate();
+                    }
                 } catch (e) {
                     console.error('참여 검증 실패:', e);
                     alert('일시적인 오류가 발생했습니다.');
+                } finally {
+                    this.isStarting = false;
                 }
+            },
+
+            /** 이어서 작성 — draft 유지한 채 이동 */
+            onResume() {
+                this.navigate();
+            },
+
+            /** 새로 시작 — draft 삭제 후 이동 */
+            async onFresh() {
+                try {
+                    await axios.delete(
+                        `/api/external/v1/thinkbig/surveys/${this.surveyId}/draft`
+                    );
+                } catch (e) {
+                    console.warn('임시저장 삭제 실패 (무시):', e);
+                }
+                this.navigate();
+            },
+
+            navigate() {
+                window.location.href = `/surveys/client/response?surveyId=${this.surveyId}`;
             },
 
             formatPeriod(beginDate, endDate) {

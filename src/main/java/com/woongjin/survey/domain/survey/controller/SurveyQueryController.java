@@ -84,6 +84,19 @@ public class SurveyQueryController {
     }
 
     /**
+     * 임시저장 삭제
+     * - 인트로에서 "새로 시작" 선택 시 호출
+     */
+    @DeleteMapping("/{surveyId}/draft")
+    public ApiResponse<Void> deleteDraft(
+            @PathVariable Long surveyId,
+            @AuthenticationPrincipal Long empId) {
+
+        surveyDraftService.deleteDraft(surveyId, empId);
+        return ApiResponse.success("임시저장이 삭제되었습니다.");
+    }
+
+    /**
      * 설문 최종 제출
      *
      * [검증 계층]
