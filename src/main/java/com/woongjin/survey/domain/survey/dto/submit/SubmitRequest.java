@@ -30,6 +30,6 @@ public class SubmitRequest {
 
     @NotEmpty(message = "답변이 비어있습니다.")
     @Valid
-    private List<AnswerDto> answers;
+    private List<SurveyAnswerDto> answers;
 }
 

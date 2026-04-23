@@ -34,5 +34,5 @@ import java.util.List;
 public class AnswerJsonPayload {
 
     /** 문항별 답변 목록 */
-    private List<AnswerDto> answers;
+    private List<SurveyAnswerDto> answers;
 }

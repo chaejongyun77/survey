@@ -1,6 +1,6 @@
 package com.woongjin.survey.domain.survey.dto;
 
-import com.woongjin.survey.domain.survey.domain.SurveyQuestion;
+import com.woongjin.survey.domain.survey.domain.Question;
 import com.woongjin.survey.domain.survey.domain.enums.QuestionType;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -54,7 +54,7 @@ public class QuestionDto {
     /** 옵션 목록 (SUBJECTIVE 유형은 빈 리스트) */
     private final List<QuestionItemDto> options;
 
-    public static QuestionDto from(SurveyQuestion question) {
+    public static QuestionDto from(Question question) {
         List<QuestionItemDto> options = question.getItems().stream()
                 .filter(item -> item.getDeletedAt() == null)   // 미삭제 항목만
                 .map(QuestionItemDto::from)

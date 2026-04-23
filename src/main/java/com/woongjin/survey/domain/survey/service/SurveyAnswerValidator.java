@@ -1,9 +1,8 @@
 package com.woongjin.survey.domain.survey.service;
 
-import com.woongjin.survey.domain.survey.domain.SurveyQuestion;
-import com.woongjin.survey.domain.survey.domain.SurveyQuestionItem;
-import com.woongjin.survey.domain.survey.domain.enums.QuestionType;
-import com.woongjin.survey.domain.survey.dto.submit.AnswerDto;
+import com.woongjin.survey.domain.survey.domain.Question;
+import com.woongjin.survey.domain.survey.domain.QuestionItem;
+import com.woongjin.survey.domain.survey.dto.submit.SurveyAnswerDto;
 import com.woongjin.survey.global.exception.BusinessException;
 import com.woongjin.survey.global.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
@@ -42,14 +41,14 @@ public class SurveyAnswerValidator {
      * @param answers   제출된 답변 목록
      * @param strict    true = 필수 문항 누락 체크 (최종 제출), false = skip (임시저장)
      */
-    public void validate(List<SurveyQuestion> questions, List<AnswerDto> answers, boolean strict) {
+    public void validate(List<Question> questions, List<SurveyAnswerDto> answers, boolean strict) {
 
         // 빠른 조회를 위한 맵 구성 (questionId → 문항/답변)
-        Map<Long, SurveyQuestion> questionById = questions.stream()
-                .collect(Collectors.toMap(SurveyQuestion::getId, question -> question));
+        Map<Long, Question> questionById = questions.stream()
+                .collect(Collectors.toMap(Question::getId, question -> question));
 
-        Map<Long, AnswerDto> answerByQuestionId = answers.stream()
-                .collect(Collectors.toMap(AnswerDto::getQuestionId, answer -> answer));
+        Map<Long, SurveyAnswerDto> answerByQuestionId = answers.stream()
+                .collect(Collectors.toMap(SurveyAnswerDto::getQuestionId, answer -> answer));
 
         // 1) 모든 answer 의 questionId 가 설문의 문항인지
         validateQuestionIds(answerByQuestionId.keySet(), questionById.keySet());
@@ -63,8 +62,8 @@ public class SurveyAnswerValidator {
         }
 
         // 4~5) 각 답변의 유형별 / 옵션 ID 검증
-        for (AnswerDto answer : answers) {
-            SurveyQuestion question = questionById.get(answer.getQuestionId());
+        for (SurveyAnswerDto answer : answers) {
+            Question question = questionById.get(answer.getQuestionId());
             validateAnswerByType(question, answer);
         }
     }
@@ -105,20 +104,20 @@ public class SurveyAnswerValidator {
      * @param answerByQuestionId questionId → 답변 맵
      * @return 활성 상태인 questionId 집합
      */
-    private Set<Long> calculateActiveQuestions(List<SurveyQuestion> questions,
-                                               Map<Long, AnswerDto> answerByQuestionId) {
+    private Set<Long> calculateActiveQuestions(List<Question> questions,
+                                               Map<Long, SurveyAnswerDto> answerByQuestionId) {
         // 역방향 인덱스: 자식 questionId → 부모 문항 (O(N)에 한 번만 구축)
         // 이후 분기 문항마다 O(1) 조회 → 전체 O(N)
-        Map<Long, SurveyQuestion> parentQuestionByChildId = questions.stream()
+        Map<Long, Question> parentQuestionByChildId = questions.stream()
                 .filter(question -> question.getChildQuestionId() != null)
                 .collect(Collectors.toMap(
-                        SurveyQuestion::getChildQuestionId,
+                        Question::getChildQuestionId,
                         question -> question
                 ));
 
         Set<Long> activeQuestionIds = new HashSet<>();
 
-        for (SurveyQuestion question : questions) {
+        for (Question question : questions) {
             // 분기 없는 문항은 항상 활성
             if (question.getParentItemId() == null) {
                 activeQuestionIds.add(question.getId());
@@ -126,10 +125,10 @@ public class SurveyAnswerValidator {
             }
 
             // 분기 문항은 부모 답변을 확인하여 활성 여부 결정
-            SurveyQuestion parentQuestion = parentQuestionByChildId.get(question.getId());
+            Question parentQuestion = parentQuestionByChildId.get(question.getId());
             if (parentQuestion == null) continue;
 
-            AnswerDto parentAnswer = answerByQuestionId.get(parentQuestion.getId());
+            SurveyAnswerDto parentAnswer = answerByQuestionId.get(parentQuestion.getId());
             if (parentAnswer == null || parentAnswer.getSelectedItemIds() == null) continue;
 
             // 부모 답변에 이 문항의 parentItemId 가 포함되어 있으면 활성
@@ -154,10 +153,10 @@ public class SurveyAnswerValidator {
      * @param activeQuestionIds  조건분기 계산 결과 활성 문항 ID 집합
      * @throws BusinessException ANSWER_REQUIRED_MISSING — 필수 문항 답변이 없을 때
      */
-    private void validateRequired(List<SurveyQuestion> questions,
-                                  Map<Long, AnswerDto> answerByQuestionId,
+    private void validateRequired(List<Question> questions,
+                                  Map<Long, SurveyAnswerDto> answerByQuestionId,
                                   Set<Long> activeQuestionIds) {
-        for (SurveyQuestion question : questions) {
+        for (Question question : questions) {
             if (!Boolean.TRUE.equals(question.getRequired())) continue;   // 필수 아니면 skip
             if (!activeQuestionIds.contains(question.getId())) continue;  // 비활성 문항은 skip
 
@@ -180,7 +179,7 @@ public class SurveyAnswerValidator {
      * @param question 답변이 속한 문항
      * @param answer   검증 대상 답변
      */
-    private void validateAnswerByType(SurveyQuestion question, AnswerDto answer) {
+    private void validateAnswerByType(Question question, SurveyAnswerDto answer) {
         if (question.getQuestionType() != answer.getType()) {
             log.warn("문항 유형 불일치: questionId={}, 실제={}, 요청={}",
                     question.getId(), question.getQuestionType(), answer.getType());
@@ -188,7 +187,7 @@ public class SurveyAnswerValidator {
         }
 
         Set<Long> validOptionIds = question.getItems().stream()
-                .map(SurveyQuestionItem::getId)
+                .map(QuestionItem::getId)
                 .collect(Collectors.toSet());
 
         switch (question.getQuestionType()) {
@@ -203,7 +202,7 @@ public class SurveyAnswerValidator {
     /**
      * 단일 선택: 선택 항목이 정확히 1개이고, 옵션 ID 가 유효해야 한다.
      */
-    private void validateSingleChoice(AnswerDto answer, Set<Long> validOptionIds) {
+    private void validateSingleChoice(SurveyAnswerDto answer, Set<Long> validOptionIds) {
         List<Long> selectedItemIds = answer.getSelectedItemIds();
         if (selectedItemIds == null || selectedItemIds.size() != 1) {
             throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);
@@ -216,7 +215,7 @@ public class SurveyAnswerValidator {
     /**
      * 복수 선택: 1개 이상 선택, 중복 선택 불가, 모든 옵션 ID 가 유효해야 한다.
      */
-    private void validateMultipleChoice(AnswerDto answer, Set<Long> validOptionIds) {
+    private void validateMultipleChoice(SurveyAnswerDto answer, Set<Long> validOptionIds) {
         List<Long> selectedItemIds = answer.getSelectedItemIds();
         if (selectedItemIds == null || selectedItemIds.isEmpty()) {
             throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);
@@ -236,7 +235,7 @@ public class SurveyAnswerValidator {
      * 주관식: 공백이 아닌 텍스트가 존재해야 한다.
      * (최대 길이는 AnswerDto @Size 에서 처리됨)
      */
-    private void validateSubjective(AnswerDto answer) {
+    private void validateSubjective(SurveyAnswerDto answer) {
         String textAnswer = answer.getTextAnswer();
         if (textAnswer == null || textAnswer.isBlank()) {
             throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);
@@ -247,7 +246,7 @@ public class SurveyAnswerValidator {
      * 척도: scaleValue 가 존재해야 한다.
      * (척도 범위 검증은 정책 확정 시 추가)
      */
-    private void validateScale(AnswerDto answer) {
+    private void validateScale(SurveyAnswerDto answer) {
         if (answer.getScaleValue() == null) {
             throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);
         }
@@ -256,7 +255,7 @@ public class SurveyAnswerValidator {
     /**
      * 순위 선택: 모든 옵션이 중복 없이 포함되어야 하며, 부분 순위는 금지된다.
      */
-    private void validateRanking(AnswerDto answer, Set<Long> validOptionIds) {
+    private void validateRanking(SurveyAnswerDto answer, Set<Long> validOptionIds) {
         List<Long> rankedItemIds = answer.getRankedItemIds();
         if (rankedItemIds == null || rankedItemIds.isEmpty()) {
             throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);

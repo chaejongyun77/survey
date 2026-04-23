@@ -1,9 +1,18 @@
 package com.woongjin.survey.domain.survey.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woongjin.survey.domain.employee.domain.Employee;
 import com.woongjin.survey.domain.employee.repository.EmployeeRepository;
+import com.woongjin.survey.domain.survey.domain.Answer;
+import com.woongjin.survey.domain.survey.domain.Question;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResult;
+import com.woongjin.survey.domain.survey.dto.submit.SurveyAnswerDto;
+import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
+import com.woongjin.survey.domain.survey.infra.SurveyDraftRepository;
 import com.woongjin.survey.domain.survey.infra.SurveyTokenRepository;
+import com.woongjin.survey.domain.survey.repository.SurveyQuestionRepository;
+import com.woongjin.survey.domain.survey.repository.SurveyResponseRepository;
 import com.woongjin.survey.global.exception.BusinessException;
 import com.woongjin.survey.global.exception.ErrorCode;
 import com.woongjin.survey.global.jwt.ClientTokenProvider;
@@ -13,10 +22,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 /**
  * 설문 커맨드 서비스
  * - 8081 요청 시 empNo 기반으로 진행중 설문 조회 + Redis 토큰 발급 (issue)
  * - 설문 인트로 진입 시 Redis 토큰 검증 + Client JWT 발급 (processIntroToken)
+ * - 임시저장 저장/삭제 (saveDraft, deleteDraft)
+ * - 설문 최종 제출 (submit)
  */
 @Slf4j
 @Service
@@ -28,6 +41,11 @@ public class SurveyCommandService {
     private final SurveyTokenRepository        surveyTokenRepository;
     private final SurveyParticipationValidator participationValidator;
     private final ClientTokenProvider          clientTokenProvider;
+    private final SurveyQuestionRepository     surveyQuestionRepository;
+    private final SurveyResponseRepository     surveyResponseRepository;
+    private final SurveyAnswerValidator        answerValidator;
+    private final SurveyDraftRepository        surveyDraftRepository;
+    private final ObjectMapper                 objectMapper;
 
     // ─────────────────────────────────────────────────────────────
     // 외부 시스템(8081) 요청 — Redis 설문 토큰 발급
@@ -136,6 +154,105 @@ public class SurveyCommandService {
                 empNo, employee.getId(), surveyId);
 
         return new SurveyIntroResult(clientToken, surveyId);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 임시저장 — 저장 / 삭제
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * 임시저장
+     * - 참여 가능 여부(기간·대상자·이미 제출) 검증 후 Redis 에 저장
+     * - 빈 answers 허용 (부분 저장 지원)
+     */
+    public void saveDraft(Long surveyId, Long empId, SubmitRequest request) {
+        participationValidator.checkParticipate(surveyId, empId);
+        List<SurveyAnswerDto> answers = request.getAnswers() != null ? request.getAnswers() : List.of();
+        surveyDraftRepository.save(empId, surveyId, answers);
+        log.info("[saveDraft] 완료: surveyId={}, empId={}, answers.size={}", surveyId, empId, answers.size());
+    }
+
+    /**
+     * 임시저장 삭제 (최종 제출 후 / 인트로에서 "새로 시작" 선택 시 호출)
+     */
+    public void deleteDraft(Long surveyId, Long empId) {
+        surveyDraftRepository.delete(empId, surveyId);
+        log.info("[deleteDraft] 임시저장 삭제: surveyId={}, empId={}", surveyId, empId);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 설문 최종 제출
+    //
+    // [처리 순서]
+    //  1) 참여 가능 여부 재검증 (TOCTOU 방지 / 직접 호출 방지)
+    //  2) 문항 목록 조회 (옵션 fetch join 포함)
+    //  3) 답변 비즈니스 검증 (SurveyAnswerValidator, strict=true)
+    //  4) answers 리스트 → JSON 직렬화
+    //  5) SurveyResponse INSERT
+    //  6) Redis 임시저장 데이터 삭제
+    //
+    // [설계 포인트]
+    // - empId 는 Client JWT 클레임에서 이미 확보됨 → Employee 재조회 불필요
+    // - AuditorAwareImpl 이 request attribute(clientEmpId) 에서 empId 를 읽으므로
+    //   SecurityContext 조작 불필요
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * 설문 최종 제출
+     *
+     * @param surveyId 설문 ID
+     * @param empId    사원 PK (ClientTokenFilter 에서 주입)
+     * @param request  제출 요청 바디
+     */
+    @Transactional
+    public void submit(Long surveyId, Long empId, SubmitRequest request) {
+
+        log.info("[submit] 시작: surveyId={}, empId={}, answers.size={}",
+                surveyId, empId, request.getAnswers().size());
+
+        // ① 참여 가능 여부 재검증
+        participationValidator.checkParticipate(surveyId, empId);
+        log.info("[submit] ① 참여 가능 검증 통과");
+
+        // ② 문항 목록 조회 (옵션 포함)
+        List<Question> questions = surveyQuestionRepository.findBySurveyIdAndDeletedAtIsNullOrderBySortOrderAsc(surveyId);
+        log.info("[submit] ② 문항 조회 완료: questions.size={}", questions.size());
+
+        // ③ 답변 비즈니스 검증 (최종 제출이므로 strict=true)
+        List<SurveyAnswerDto> answers = request.getAnswers();
+        answerValidator.validate(questions, answers, true);
+        log.info("[submit] ③ 답변 검증 통과");
+
+        // ④ JSON 직렬화
+        String answersJson = serializeAnswers(answers);
+
+        // ⑤ DB INSERT
+        //    - AuditorAwareImpl 이 request attribute(clientEmpId) 에서 empId 를 읽어
+        //      FRST_CRTN_ID / RCNT_UPDT_ID 자동 세팅 (SecurityContext 조작 불필요)
+        Answer response = Answer.builder()
+                .surveyId(surveyId)
+                .empId(empId)
+                .answers(answersJson)
+                .build();
+
+        surveyResponseRepository.save(response);
+        log.info("[submit] ⑤ 설문 제출 완료: surveyId={}, empId={}", surveyId, empId);
+
+        // ⑥ Redis 임시저장 삭제
+        surveyDraftRepository.delete(empId, surveyId);
+        log.info("[submit] ⑥ 임시저장 삭제 완료: surveyId={}, empId={}", surveyId, empId);
+    }
+
+    /**
+     * answers 리스트를 JSON 문자열로 직렬화한다.
+     */
+    private String serializeAnswers(List<SurveyAnswerDto> answers) {
+        try {
+            return objectMapper.writeValueAsString(answers);
+        } catch (JsonProcessingException e) {
+            log.error("답변 JSON 직렬화 실패", e);
+            throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);
+        }
     }
 }
 

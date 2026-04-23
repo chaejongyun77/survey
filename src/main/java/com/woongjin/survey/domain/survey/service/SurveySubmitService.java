@@ -3,8 +3,8 @@ package com.woongjin.survey.domain.survey.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woongjin.survey.domain.survey.domain.Answer;
-import com.woongjin.survey.domain.survey.domain.SurveyQuestion;
-import com.woongjin.survey.domain.survey.dto.submit.AnswerDto;
+import com.woongjin.survey.domain.survey.domain.Question;
+import com.woongjin.survey.domain.survey.dto.submit.SurveyAnswerDto;
 import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
 import com.woongjin.survey.domain.survey.infra.SurveyDraftRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyQuestionRepository;
@@ -64,11 +64,11 @@ public class SurveySubmitService {
         log.info("[submit] ① 참여 가능 검증 통과");
 
         // ② 문항 목록 조회 (옵션 포함)
-        List<SurveyQuestion> questions = surveyQuestionRepository.findBySurveyIdAndDeletedAtIsNullOrderBySortOrderAsc(surveyId);
+        List<Question> questions = surveyQuestionRepository.findBySurveyIdAndDeletedAtIsNullOrderBySortOrderAsc(surveyId);
         log.info("[submit] ② 문항 조회 완료: questions.size={}", questions.size());
 
         // ③ 답변 비즈니스 검증 (최종 제출이므로 strict=true)
-        List<AnswerDto> answers = request.getAnswers();
+        List<SurveyAnswerDto> answers = request.getAnswers();
         answerValidator.validate(questions, answers, true);
         log.info("[submit] ③ 답변 검증 통과");
 
@@ -92,7 +92,7 @@ public class SurveySubmitService {
         log.info("[submit] ⑥ 임시저장 삭제 완료: surveyId={}, empId={}", surveyId, empId);
     }
 
-    private String serializeAnswers(List<AnswerDto> answers) {
+    private String serializeAnswers(List<SurveyAnswerDto> answers) {
         try {
             return objectMapper.writeValueAsString(answers);
         } catch (JsonProcessingException e) {

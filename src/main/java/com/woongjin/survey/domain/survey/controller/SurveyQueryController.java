@@ -1,14 +1,12 @@
 package com.woongjin.survey.domain.survey.controller;
 
-import com.woongjin.survey.domain.survey.domain.SurveyParticipateStatus;
 import com.woongjin.survey.domain.survey.dto.QuestionDto;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
-import com.woongjin.survey.domain.survey.dto.submit.AnswerDto;
+import com.woongjin.survey.domain.survey.dto.submit.SurveyAnswerDto;
 import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
-import com.woongjin.survey.domain.survey.service.SurveyDraftService;
+import com.woongjin.survey.domain.survey.service.SurveyCommandService;
 import com.woongjin.survey.domain.survey.service.SurveyParticipationValidator;
 import com.woongjin.survey.domain.survey.service.SurveyQueryService;
-import com.woongjin.survey.domain.survey.service.SurveySubmitService;
 import com.woongjin.survey.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,9 +27,8 @@ import java.util.List;
 public class SurveyQueryController {
 
     private final SurveyQueryService           surveyQueryService;
-    private final SurveySubmitService          surveySubmitService;
+    private final SurveyCommandService         surveyCommandService;
     private final SurveyParticipationValidator participationValidator;
-    private final SurveyDraftService           surveyDraftService;
 
     @GetMapping("/{surveyId}/intro")
     public ApiResponse<SurveyIntroResponse> getIntro(@PathVariable Long surveyId) {
@@ -68,7 +65,7 @@ public class SurveyQueryController {
             @AuthenticationPrincipal Long empId) {
 
         log.info("임시저장 요청: surveyId={}, empId={}", surveyId, empId);
-        surveyDraftService.saveDraft(surveyId, empId, request);
+        surveyCommandService.saveDraft(surveyId, empId, request);
         return ApiResponse.success("임시저장되었습니다.");
     }
 
@@ -77,11 +74,11 @@ public class SurveyQueryController {
      * - 저장된 draft 없으면 data: null 반환
      */
     @GetMapping("/{surveyId}/draft")
-    public ApiResponse<List<AnswerDto>> getDraft(
+    public ApiResponse<List<SurveyAnswerDto>> getDraft(
             @PathVariable Long surveyId,
             @AuthenticationPrincipal Long empId) {
 
-        return surveyDraftService.getDraft(surveyId, empId)
+        return surveyQueryService.getDraft(surveyId, empId)
                 .map(answers -> ApiResponse.success("임시저장 조회 성공", answers))
                 .orElse(ApiResponse.success("임시저장 없음", null));
     }
@@ -95,7 +92,7 @@ public class SurveyQueryController {
             @PathVariable Long surveyId,
             @AuthenticationPrincipal Long empId) {
 
-        surveyDraftService.deleteDraft(surveyId, empId);
+        surveyCommandService.deleteDraft(surveyId, empId);
         return ApiResponse.success("임시저장이 삭제되었습니다.");
     }
 
@@ -115,7 +112,7 @@ public class SurveyQueryController {
 
         log.info("설문 제출 요청: surveyId={}, empId={}, answerCount={}",
                 surveyId, empId, request.getAnswers().size());
-        surveySubmitService.submit(surveyId, empId, request);
+        surveyCommandService.submit(surveyId, empId, request);
 
         return ApiResponse.success("설문이 제출되었습니다.");
     }

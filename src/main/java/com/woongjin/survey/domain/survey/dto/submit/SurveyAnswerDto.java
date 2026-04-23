@@ -36,7 +36,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)   // null 필드는 JSON 에서 제외 (DB 저장 용량 최소화)
-public class AnswerDto {
+public class SurveyAnswerDto {
 
     /** 문항 ID (QST_ID) */
     @NotNull(message = "문항 ID는 필수입니다.")

@@ -2,6 +2,8 @@ package com.woongjin.survey.domain.survey.service;
 
 import com.woongjin.survey.domain.survey.dto.QuestionDto;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
+import com.woongjin.survey.domain.survey.dto.submit.SurveyAnswerDto;
+import com.woongjin.survey.domain.survey.infra.SurveyDraftRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyQuestionRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyRepository;
 import com.woongjin.survey.global.exception.BusinessException;
@@ -19,6 +21,7 @@ import java.util.Optional;
  * - 설문 인트로 데이터 조회
  * - 문항 목록 조회
  * - 사원 기준 진행중 설문 조회
+ * - 임시저장 조회 (getDraft)
  *
  * [참여 가능 여부 검증]
  * SurveyParticipationValidator 로 분리됨
@@ -30,6 +33,7 @@ public class SurveyQueryService {
 
     private final SurveyRepository         surveyRepository;
     private final SurveyQuestionRepository surveyQuestionRepository;
+    private final SurveyDraftRepository    surveyDraftRepository;
 
     // =============================================
     // 문항 조회
@@ -77,6 +81,18 @@ public class SurveyQueryService {
     @Transactional(readOnly = true)
     public Optional<Long> findActiveSurveyIdByEmpId(Long empId) {
         return surveyRepository.findActiveSurveyIdByEmpId(empId);
+    }
+
+    // =============================================
+    // 임시저장 조회
+    // =============================================
+
+    /**
+     * 임시저장 조회
+     * - 저장된 draft 없으면 Optional.empty() 반환
+     */
+    public Optional<List<SurveyAnswerDto>> getDraft(Long surveyId, Long empId) {
+        return surveyDraftRepository.find(empId, surveyId);
     }
 }
 

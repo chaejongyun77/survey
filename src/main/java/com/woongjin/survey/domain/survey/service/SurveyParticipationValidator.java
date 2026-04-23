@@ -26,7 +26,7 @@ import java.time.LocalDateTime;
  *
  * [사용처]
  * - SurveyCreateService.issue()     : 토큰 발급 전 사전 검증 (이미 응답 완료 여부)
- * - SurveySubmitService.submit()    : 제출 직전 최종 검증 (TOCTOU 방지)
+ * - SurveyCommandService.submit()   : 제출 직전 최종 검증 (TOCTOU 방지)
  * - SurveyApiController.participate(): 참여 버튼 클릭 시 검증
  *
  * [검증 순서 — checkParticipate()]

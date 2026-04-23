@@ -22,7 +22,7 @@ import java.util.List;
 @Entity
 @Table(name = "SVY_QST_TB")
 @EntityListeners(AuditingEntityListener.class)
-public class SurveyQuestion extends BaseEntity {
+public class Question extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -71,5 +71,5 @@ public class SurveyQuestion extends BaseEntity {
     /** 문항 항목 목록 (옵션) — TEXT 유형은 비어있음 */
     @OneToMany(mappedBy = "question", fetch = FetchType.LAZY)
     @OrderBy("sortOrder ASC")
-    private List<SurveyQuestionItem> items = new ArrayList<>();
+    private List<QuestionItem> items = new ArrayList<>();
 }

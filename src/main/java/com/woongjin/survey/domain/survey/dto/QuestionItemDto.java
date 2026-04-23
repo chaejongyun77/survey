@@ -1,6 +1,6 @@
 package com.woongjin.survey.domain.survey.dto;
 
-import com.woongjin.survey.domain.survey.domain.SurveyQuestionItem;
+import com.woongjin.survey.domain.survey.domain.QuestionItem;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -23,7 +23,7 @@ public class QuestionItemDto {
     /** 정렬 순서 */
     private final Integer sortOrder;
 
-    public static QuestionItemDto from(SurveyQuestionItem item) {
+    public static QuestionItemDto from(QuestionItem item) {
         return QuestionItemDto.builder()
                 .itemId(item.getId())
                 .itemName(item.getItemName())

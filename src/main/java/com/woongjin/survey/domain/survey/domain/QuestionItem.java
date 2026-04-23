@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Entity
 @Table(name = "SVY_QST_ITM_TB")
-public class SurveyQuestionItem extends BaseEntity {
+public class QuestionItem extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,7 +24,7 @@ public class SurveyQuestionItem extends BaseEntity {
     /** 소속 문항 (연관관계 주인) */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "QST_ID", nullable = false)
-    private SurveyQuestion question;
+    private Question question;
 
     /** 항목 명 */
     @Column(name = "ITM_NM", nullable = false, length = 50)

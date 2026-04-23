@@ -3,7 +3,7 @@ package com.woongjin.survey.domain.survey.infra;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.woongjin.survey.domain.survey.dto.submit.AnswerDto;
+import com.woongjin.survey.domain.survey.dto.submit.SurveyAnswerDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -31,7 +31,7 @@ public class SurveyDraftRepository {
     private static final String PREFIX = "survey:draft:";
     private static final long DRAFT_TTL_DAYS = 7L;
 
-    public void save(Long empId, Long surveyId, List<AnswerDto> answers) {
+    public void save(Long empId, Long surveyId, List<SurveyAnswerDto> answers) {
         try {
             String json = objectMapper.writeValueAsString(answers);
             redisTemplate.opsForValue().set(key(empId, surveyId), json, DRAFT_TTL_DAYS, TimeUnit.DAYS);
@@ -41,7 +41,7 @@ public class SurveyDraftRepository {
         }
     }
 
-    public Optional<List<AnswerDto>> find(Long empId, Long surveyId) {
+    public Optional<List<SurveyAnswerDto>> find(Long empId, Long surveyId) {
         String json = redisTemplate.opsForValue().get(key(empId, surveyId));
         if (json == null) return Optional.empty();
         try {
