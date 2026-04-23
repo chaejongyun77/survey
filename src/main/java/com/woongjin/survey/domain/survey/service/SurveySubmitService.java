@@ -6,6 +6,7 @@ import com.woongjin.survey.domain.survey.domain.Answer;
 import com.woongjin.survey.domain.survey.domain.SurveyQuestion;
 import com.woongjin.survey.domain.survey.dto.submit.AnswerDto;
 import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
+import com.woongjin.survey.domain.survey.infra.SurveyDraftRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyQuestionRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyResponseRepository;
 import com.woongjin.survey.global.exception.BusinessException;
@@ -42,6 +43,7 @@ public class SurveySubmitService {
     private final SurveyResponseRepository       surveyResponseRepository;
     private final SurveyParticipationValidator   participationValidator;
     private final SurveyAnswerValidator          answerValidator;
+    private final SurveyDraftRepository          surveyDraftRepository;
     private final ObjectMapper                   objectMapper;
 
     /**
@@ -85,8 +87,9 @@ public class SurveySubmitService {
         surveyResponseRepository.save(response);
         log.info("[submit] ⑤ 설문 제출 완료: surveyId={}, empId={}", surveyId, empId);
 
-        // ⑥ TODO: Redis 임시저장 삭제
-        // redisTemplate.delete("survey:temp:" + empId + ":" + surveyId);
+        // ⑥ Redis 임시저장 삭제
+        surveyDraftRepository.delete(empId, surveyId);
+        log.info("[submit] ⑥ 임시저장 삭제 완료: surveyId={}, empId={}", surveyId, empId);
     }
 
     private String serializeAnswers(List<AnswerDto> answers) {

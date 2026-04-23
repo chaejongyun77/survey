@@ -81,7 +81,9 @@ document.addEventListener('alpine:init', () => {
       loadError:     false,
       isCompleted:   false,
       isSubmitting:  false,
+      isSaving:      false,
       showSaveToast: false,
+      saveError:     false,
       lastSavedAt:   '',
     },
 
@@ -104,7 +106,6 @@ document.addEventListener('alpine:init', () => {
 
     /** 드래그앤드롭 내부 상태 */
     _drag: { srcQstId: null, srcIdx: null },
-    _autoSaveTimer: null,
 
     // ═══════════════════════════════════════════════
     // 초기화
@@ -131,11 +132,58 @@ document.addEventListener('alpine:init', () => {
           if (q.qstTyCd === 'SUBJECTIVE')      this.responses.text[q.qstId]     = '';
           if (q.qstTyCd === 'RANKING')         this.responses.rank[q.qstId]     = [...q.options];
         });
+
+        // 임시저장 복원
+        await this.restoreDraft();
       } catch (e) {
         console.error('설문 데이터 로드 실패:', e);
         this.ui.loadError = true;
       } finally {
         this.ui.isLoading = false;
+      }
+    },
+
+    // ═══════════════════════════════════════════════
+    // 임시저장 복원
+    // ═══════════════════════════════════════════════
+
+    async restoreDraft() {
+      try {
+        const res = await axios.get(`/api/external/v1/thinkbig/surveys/${SVY_ID}/draft`);
+        const answers = res.data?.data;
+        if (!Array.isArray(answers) || answers.length === 0) return;
+
+        answers.forEach(a => {
+          switch (a.type) {
+            case 'SINGLE_CHOICE':
+              if (a.selectedItemIds?.length) this.responses.single[a.questionId] = a.selectedItemIds[0];
+              break;
+            case 'MULTIPLE_CHOICE':
+              this.responses.multiple[a.questionId] = a.selectedItemIds ?? [];
+              break;
+            case 'SUBJECTIVE':
+              this.responses.text[a.questionId] = a.textAnswer ?? '';
+              break;
+            case 'SCALE':
+              if (a.scaleValue != null) this.responses.single[a.questionId] = a.scaleValue;
+              break;
+            case 'RANKING': {
+              const question = this.survey.questions.find(q => q.qstId === a.questionId);
+              if (question && a.rankedItemIds?.length) {
+                const itemMap = Object.fromEntries(question.options.map(o => [o.itemId, o]));
+                const restored = a.rankedItemIds.map(id => itemMap[id]).filter(Boolean);
+                if (restored.length === question.options.length) {
+                  this.responses.rank[a.questionId] = restored;
+                }
+              }
+              break;
+            }
+          }
+        });
+
+        console.log('[restoreDraft] 임시저장 복원 완료, answers.size=', answers.length);
+      } catch (e) {
+        console.warn('[restoreDraft] 임시저장 복원 실패 (무시):', e);
       }
     },
 
@@ -236,14 +284,12 @@ document.addEventListener('alpine:init', () => {
         this.responses.multiple[cid] = [];
         this.responses.text[cid]     = '';
       }
-      this.triggerAutoSave();
     },
 
     // SCALE
     selectScale(qstId, itemId) {
       this.responses.single[qstId] = itemId;
       delete this.responses.errors[qstId];
-      this.triggerAutoSave();
     },
 
     // MULTIPLE
@@ -253,7 +299,6 @@ document.addEventListener('alpine:init', () => {
       if (idx > -1) this.responses.multiple[qstId].splice(idx, 1);
       else          this.responses.multiple[qstId].push(itemId);
       delete this.responses.errors[qstId];
-      this.triggerAutoSave();
     },
 
     isMultipleSelected(qstId, itemId) {
@@ -263,7 +308,6 @@ document.addEventListener('alpine:init', () => {
     // TEXT
     onTextInput(qstId) {
       if ((this.responses.text[qstId] || '').trim()) delete this.responses.errors[qstId];
-      this.triggerAutoSave();
     },
 
     // ═══════════════════════════════════════════════
@@ -299,7 +343,6 @@ document.addEventListener('alpine:init', () => {
       const [moved] = list.splice(srcIdx, 1);
       list.splice(toIdx, 0, moved);
       this.responses.rank[qstId] = list;
-      this.triggerAutoSave();
     },
 
     onDragEnd(e) {
@@ -308,20 +351,27 @@ document.addEventListener('alpine:init', () => {
     },
 
     // ═══════════════════════════════════════════════
-    // 자동저장 (debounce 3초)
+    // 임시저장 (버튼 클릭 시에만 호출)
     // ═══════════════════════════════════════════════
 
-    triggerAutoSave() {
-      clearTimeout(this._autoSaveTimer);
-      this._autoSaveTimer = setTimeout(() => this.saveDraft(), 3000);
-    },
-
     async saveDraft() {
-      // TODO: await axios.post(`/api/external/v1/thinkbig/surveys/${SVY_ID}/draft`, this.buildPayload());
-      const now = new Date();
-      this.ui.lastSavedAt   = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
-      this.ui.showSaveToast = true;
-      setTimeout(() => { this.ui.showSaveToast = false; }, 2500);
+      if (this.ui.isSaving) return;
+      this.ui.isSaving = true;
+      this.ui.saveError = false;
+      try {
+        await axios.post(`/api/external/v1/thinkbig/surveys/${SVY_ID}/draft`, this.buildPayload());
+        const now = new Date();
+        this.ui.lastSavedAt   = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+        this.ui.showSaveToast = true;
+        setTimeout(() => { this.ui.showSaveToast = false; }, 2500);
+      } catch (e) {
+        console.error('[saveDraft] 실패:', e);
+        this.ui.saveError = true;
+        const message = e.response?.data?.message || '임시저장에 실패했습니다. 다시 시도해주세요.';
+        alert(message);
+      } finally {
+        this.ui.isSaving = false;
+      }
     },
 
     // ═══════════════════════════════════════════════
@@ -525,14 +575,14 @@ document.addEventListener('alpine:init', () => {
       </div>
     </div>
 
-    <!-- 자동저장 토스트 -->
+    <!-- 임시저장 토스트 -->
     <div x-show="ui.showSaveToast" x-cloak class="fixed top-4 right-4 z-50">
       <div class="anim-toast bg-white border border-orange-200 text-orange-600 text-xs font-medium
                   px-3 py-2 rounded-lg shadow-md flex items-center gap-1.5">
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
         </svg>
-        자동 저장됨 <span x-text="ui.lastSavedAt"></span>
+        임시저장 완료 <span x-text="ui.lastSavedAt"></span>
       </div>
     </div>
 
@@ -677,25 +727,47 @@ document.addEventListener('alpine:init', () => {
       </template>
     </div><!-- /문항 목록 -->
 
-    <!-- 하단 고정 제출 버튼 -->
+    <!-- 하단 고정 버튼 바 -->
     <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 shadow-lg z-10">
       <div class="max-w-xl mx-auto">
         <p class="text-xs text-gray-400 text-center mb-3">* 표시 항목은 필수 응답입니다</p>
-        <button class="w-full text-white font-semibold py-4 rounded-2xl text-base tracking-wide
-                       transition-all duration-200 active:scale-98
-                       disabled:bg-gray-300 disabled:cursor-not-allowed
-                       enabled:bg-orange-500 enabled:hover:bg-orange-600 enabled:hover:shadow-lg"
-                @click="submitSurvey"
-                :disabled="ui.isSubmitting">
-          <span x-show="!ui.isSubmitting">설문 제출하기</span>
-          <span x-show="ui.isSubmitting" class="flex items-center justify-center gap-2">
-            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="white" stroke-width="4"/>
-              <path class="opacity-75" fill="white" d="M4 12a8 8 0 018-8v8z"/>
+        <div class="flex gap-3">
+          <!-- 임시저장 버튼 -->
+          <button class="flex-none flex items-center justify-center gap-1.5 border-2 border-orange-400
+                         text-orange-500 font-semibold px-5 py-4 rounded-2xl text-sm tracking-wide
+                         transition-all duration-200 active:scale-95
+                         hover:bg-orange-50
+                         disabled:border-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  @click="saveDraft"
+                  :disabled="ui.isSaving || ui.isSubmitting">
+            <svg x-show="!ui.isSaving" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
             </svg>
-            제출 중...
-          </span>
-        </button>
+            <svg x-show="ui.isSaving" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+            </svg>
+            <span x-text="ui.isSaving ? '저장 중...' : '임시저장'"></span>
+          </button>
+
+          <!-- 제출 버튼 -->
+          <button class="flex-1 text-white font-semibold py-4 rounded-2xl text-base tracking-wide
+                         transition-all duration-200 active:scale-98
+                         disabled:bg-gray-300 disabled:cursor-not-allowed
+                         enabled:bg-orange-500 enabled:hover:bg-orange-600 enabled:hover:shadow-lg"
+                  @click="submitSurvey"
+                  :disabled="ui.isSubmitting || ui.isSaving">
+            <span x-show="!ui.isSubmitting">설문 제출하기</span>
+            <span x-show="ui.isSubmitting" class="flex items-center justify-center gap-2">
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="white" stroke-width="4"/>
+                <path class="opacity-75" fill="white" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+              제출 중...
+            </span>
+          </button>
+        </div>
       </div>
     </div>
 

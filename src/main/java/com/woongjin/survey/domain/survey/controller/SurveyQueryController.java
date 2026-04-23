@@ -3,7 +3,10 @@ package com.woongjin.survey.domain.survey.controller;
 import com.woongjin.survey.domain.survey.domain.SurveyParticipateStatus;
 import com.woongjin.survey.domain.survey.dto.QuestionDto;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
+import com.woongjin.survey.domain.survey.dto.submit.AnswerDto;
+import com.woongjin.survey.domain.survey.dto.submit.DraftRequest;
 import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
+import com.woongjin.survey.domain.survey.service.SurveyDraftService;
 import com.woongjin.survey.domain.survey.service.SurveyParticipationValidator;
 import com.woongjin.survey.domain.survey.service.SurveyQueryService;
 import com.woongjin.survey.domain.survey.service.SurveySubmitService;
@@ -29,6 +32,7 @@ public class SurveyQueryController {
     private final SurveyQueryService           surveyQueryService;
     private final SurveySubmitService          surveySubmitService;
     private final SurveyParticipationValidator participationValidator;
+    private final SurveyDraftService           surveyDraftService;
 
     @GetMapping("/{surveyId}/intro")
     public ApiResponse<SurveyIntroResponse> getIntro(@PathVariable Long surveyId) {
@@ -47,6 +51,36 @@ public class SurveyQueryController {
 
         log.debug("설문 참여 검증: surveyId={}, empId={}", surveyId, empId);
         return participationValidator.checkParticipate(surveyId, empId);
+    }
+
+    /**
+     * 임시저장
+     * - answers 가 비어있어도 허용 (부분 저장 지원)
+     * - Redis 에 7일 TTL 로 저장
+     */
+    @PostMapping("/{surveyId}/draft")
+    public ApiResponse<Void> saveDraft(
+            @PathVariable Long surveyId,
+            @Valid @RequestBody DraftRequest request,
+            @AuthenticationPrincipal Long empId) {
+
+        log.info("임시저장 요청: surveyId={}, empId={}, answerCount={}", surveyId, empId, request.getAnswers().size());
+        surveyDraftService.saveDraft(surveyId, empId, request);
+        return ApiResponse.success("임시저장되었습니다.");
+    }
+
+    /**
+     * 임시저장 조회
+     * - 저장된 draft 없으면 data: null 반환
+     */
+    @GetMapping("/{surveyId}/draft")
+    public ApiResponse<List<AnswerDto>> getDraft(
+            @PathVariable Long surveyId,
+            @AuthenticationPrincipal Long empId) {
+
+        return surveyDraftService.getDraft(surveyId, empId)
+                .map(answers -> ApiResponse.success("임시저장 조회 성공", answers))
+                .orElse(ApiResponse.success("임시저장 없음", null));
     }
 
     /**
