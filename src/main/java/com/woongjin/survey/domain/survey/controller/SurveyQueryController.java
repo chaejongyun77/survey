@@ -4,7 +4,6 @@ import com.woongjin.survey.domain.survey.domain.SurveyParticipateStatus;
 import com.woongjin.survey.domain.survey.dto.QuestionDto;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
 import com.woongjin.survey.domain.survey.dto.submit.AnswerDto;
-import com.woongjin.survey.domain.survey.dto.submit.DraftRequest;
 import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
 import com.woongjin.survey.domain.survey.service.SurveyDraftService;
 import com.woongjin.survey.domain.survey.service.SurveyParticipationValidator;
@@ -58,13 +57,17 @@ public class SurveyQueryController {
      * - answers 가 비어있어도 허용 (부분 저장 지원)
      * - Redis 에 7일 TTL 로 저장
      */
+    /**
+     * 임시저장 — @Valid 없이 받아서 빈 answers 허용
+     * (SubmitRequest 의 @NotEmpty 는 @Valid 가 있어야 동작함)
+     */
     @PostMapping("/{surveyId}/draft")
     public ApiResponse<Void> saveDraft(
             @PathVariable Long surveyId,
-            @Valid @RequestBody DraftRequest request,
+            @RequestBody SubmitRequest request,
             @AuthenticationPrincipal Long empId) {
 
-        log.info("임시저장 요청: surveyId={}, empId={}, answerCount={}", surveyId, empId, request.getAnswers().size());
+        log.info("임시저장 요청: surveyId={}, empId={}", surveyId, empId);
         surveyDraftService.saveDraft(surveyId, empId, request);
         return ApiResponse.success("임시저장되었습니다.");
     }

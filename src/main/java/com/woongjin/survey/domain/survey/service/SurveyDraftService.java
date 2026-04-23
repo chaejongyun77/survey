@@ -1,7 +1,7 @@
 package com.woongjin.survey.domain.survey.service;
 
 import com.woongjin.survey.domain.survey.dto.submit.AnswerDto;
-import com.woongjin.survey.domain.survey.dto.submit.DraftRequest;
+import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
 import com.woongjin.survey.domain.survey.infra.SurveyDraftRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,10 +23,11 @@ public class SurveyDraftService {
      * - 참여 가능 여부(기간·대상자·이미 제출) 검증 후 Redis 에 저장
      * - 빈 answers 허용 (부분 저장 지원)
      */
-    public void saveDraft(Long surveyId, Long empId, DraftRequest request) {
+    public void saveDraft(Long surveyId, Long empId, SubmitRequest request) {
         participationValidator.checkParticipate(surveyId, empId);
-        surveyDraftRepository.save(empId, surveyId, request.getAnswers());
-        log.info("[saveDraft] 완료: surveyId={}, empId={}, answers.size={}", surveyId, empId, request.getAnswers().size());
+        List<AnswerDto> answers = request.getAnswers() != null ? request.getAnswers() : List.of();
+        surveyDraftRepository.save(empId, surveyId, answers);
+        log.info("[saveDraft] 완료: surveyId={}, empId={}, answers.size={}", surveyId, empId, answers.size());
     }
 
     /**

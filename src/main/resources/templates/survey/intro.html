@@ -102,31 +102,7 @@
     </template>
 
     <!-- 임시저장 확인 모달 -->
-    <div x-show="showDraftModal" x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <div class="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center mx-auto mb-4">
-                <svg class="w-6 h-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
-                </svg>
-            </div>
-            <h2 class="text-center text-gray-900 font-bold text-lg mb-1">이어서 작성하시겠습니까?</h2>
-            <p class="text-center text-gray-500 text-sm mb-6">이전에 임시저장된 내용이 있습니다.</p>
-            <div class="flex gap-3">
-                <button @click="onFresh"
-                        class="flex-1 py-3 bg-gray-100 text-gray-600 font-semibold rounded-xl text-sm
-                               hover:bg-gray-200 transition-colors">
-                    새로 시작
-                </button>
-                <button @click="onResume"
-                        class="flex-[2] py-3 bg-[#FF6A00] text-white font-semibold rounded-xl text-sm
-                               hover:bg-[#E55E00] transition-colors">
-                    이어서 작성
-                </button>
-            </div>
-        </div>
-    </div>
+    <div th:replace="~{fragments/draft-modal :: draftModal}"></div>
 
 </article>
 
