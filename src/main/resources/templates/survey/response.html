@@ -136,7 +136,7 @@ document.addEventListener('alpine:init', () => {
         await this.restoreDraft();
 
         // 1분마다 자동저장
-        this._autoSaveTimer = setInterval(() => this.saveDraft(), 60_000);
+        this._autoSaveTimer = setInterval(() => this.saveDraft(), 10_000);
       } catch (e) {
         console.error('설문 데이터 로드 실패:', e);
         this.ui.loadError = true;

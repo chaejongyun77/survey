@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 public class SurveyAnswerValidator {
 
     /**
-     * 설문 답변 전체 검증
+     * 설문 답변 전체 검증 (진입점)
      *
      * @param questions 해당 설문의 전체 문항 목록 (옵션 포함)
      * @param answers   제출된 답변 목록
@@ -44,27 +44,27 @@ public class SurveyAnswerValidator {
      */
     public void validate(List<SurveyQuestion> questions, List<AnswerDto> answers, boolean strict) {
 
-        // 빠른 조회를 위한 맵 구성
-        Map<Long, SurveyQuestion> questionMap = questions.stream()
-                .collect(Collectors.toMap(SurveyQuestion::getId, q -> q));
+        // 빠른 조회를 위한 맵 구성 (questionId → 문항/답변)
+        Map<Long, SurveyQuestion> questionById = questions.stream()
+                .collect(Collectors.toMap(SurveyQuestion::getId, question -> question));
 
-        Map<Long, AnswerDto> answerMap = answers.stream()
-                .collect(Collectors.toMap(AnswerDto::getQuestionId, a -> a));
+        Map<Long, AnswerDto> answerByQuestionId = answers.stream()
+                .collect(Collectors.toMap(AnswerDto::getQuestionId, answer -> answer));
 
         // 1) 모든 answer 의 questionId 가 설문의 문항인지
-        validateQuestionIds(answerMap.keySet(), questionMap.keySet());
+        validateQuestionIds(answerByQuestionId.keySet(), questionById.keySet());
 
         // 2) 조건분기 활성화 기반 "응답해야 할 문항" 계산
-        Set<Long> activeQuestionIds = calculateActiveQuestions(questions, answerMap);
+        Set<Long> activeQuestionIds = calculateActiveQuestions(questions, answerByQuestionId);
 
         // 3) 필수 문항 누락 검증 (strict 모드에서만)
         if (strict) {
-            validateRequired(questions, answerMap, activeQuestionIds);
+            validateRequired(questions, answerByQuestionId, activeQuestionIds);
         }
 
         // 4~5) 각 답변의 유형별 / 옵션 ID 검증
         for (AnswerDto answer : answers) {
-            SurveyQuestion question = questionMap.get(answer.getQuestionId());
+            SurveyQuestion question = questionById.get(answer.getQuestionId());
             validateAnswerByType(question, answer);
         }
     }
@@ -73,10 +73,17 @@ public class SurveyAnswerValidator {
     // 1) questionId 유효성
     // ─────────────────────────────────────────────────────────────
 
-    private void validateQuestionIds(Set<Long> answerQuestionIds, Set<Long> validQuestionIds) {
-        for (Long qid : answerQuestionIds) {
-            if (!validQuestionIds.contains(qid)) {
-                log.warn("존재하지 않는 문항 ID: {}", qid);
+    /**
+     * 제출된 답변의 questionId 가 모두 이 설문에 속한 문항인지 확인한다.
+     *
+     * @param answeredQuestionIds 제출된 답변들의 questionId 집합
+     * @param surveyQuestionIds   해당 설문이 실제로 보유한 questionId 집합
+     * @throws BusinessException ANSWER_INVALID_QUESTION — 외부 questionId 가 섞여있을 때
+     */
+    private void validateQuestionIds(Set<Long> answeredQuestionIds, Set<Long> surveyQuestionIds) {
+        for (Long questionId : answeredQuestionIds) {
+            if (!surveyQuestionIds.contains(questionId)) {
+                log.warn("존재하지 않는 문항 ID: {}", questionId);
                 throw new BusinessException(ErrorCode.ANSWER_INVALID_QUESTION);
             }
         }
@@ -90,55 +97,72 @@ public class SurveyAnswerValidator {
     //  - 분기 있는 문항(parentItemId != null) : 부모 답변이 parentItemId 를 선택했을 때만 활성
     // ─────────────────────────────────────────────────────────────
 
+    /**
+     * 조건분기를 고려하여 "실제로 응답 대상이 되는 문항 ID 집합"을 계산한다.
+     * 이 집합은 필수 문항 누락 검증에서 사용된다.
+     *
+     * @param questions          전체 문항 목록
+     * @param answerByQuestionId questionId → 답변 맵
+     * @return 활성 상태인 questionId 집합
+     */
     private Set<Long> calculateActiveQuestions(List<SurveyQuestion> questions,
-                                               Map<Long, AnswerDto> answerMap) {
-        // 역방향 인덱스: childQuestionId → 부모 문항 (O(N)에 한 번만 구축)
+                                               Map<Long, AnswerDto> answerByQuestionId) {
+        // 역방향 인덱스: 자식 questionId → 부모 문항 (O(N)에 한 번만 구축)
         // 이후 분기 문항마다 O(1) 조회 → 전체 O(N)
-        Map<Long, SurveyQuestion> parentByChildId = questions.stream()
-                .filter(q -> q.getChildQuestionId() != null)
+        Map<Long, SurveyQuestion> parentQuestionByChildId = questions.stream()
+                .filter(question -> question.getChildQuestionId() != null)
                 .collect(Collectors.toMap(
                         SurveyQuestion::getChildQuestionId,
-                        q -> q
+                        question -> question
                 ));
 
-        Set<Long> active = new HashSet<>();
+        Set<Long> activeQuestionIds = new HashSet<>();
 
-        for (SurveyQuestion q : questions) {
+        for (SurveyQuestion question : questions) {
             // 분기 없는 문항은 항상 활성
-            if (q.getParentItemId() == null) {
-                active.add(q.getId());
+            if (question.getParentItemId() == null) {
+                activeQuestionIds.add(question.getId());
                 continue;
             }
 
-            // 분기 문항은 부모 답변 확인
-            SurveyQuestion parent = parentByChildId.get(q.getId());
-            if (parent == null) continue;
+            // 분기 문항은 부모 답변을 확인하여 활성 여부 결정
+            SurveyQuestion parentQuestion = parentQuestionByChildId.get(question.getId());
+            if (parentQuestion == null) continue;
 
-            AnswerDto parentAnswer = answerMap.get(parent.getId());
+            AnswerDto parentAnswer = answerByQuestionId.get(parentQuestion.getId());
             if (parentAnswer == null || parentAnswer.getSelectedItemIds() == null) continue;
 
-            // 부모 답변에 parentItemId 가 포함되어 있으면 활성
-            if (parentAnswer.getSelectedItemIds().contains(q.getParentItemId())) {
-                active.add(q.getId());
+            // 부모 답변에 이 문항의 parentItemId 가 포함되어 있으면 활성
+            if (parentAnswer.getSelectedItemIds().contains(question.getParentItemId())) {
+                activeQuestionIds.add(question.getId());
             }
         }
 
-        return active;
+        return activeQuestionIds;
     }
 
     // ─────────────────────────────────────────────────────────────
     // 3) 필수 문항 누락 검증
     // ─────────────────────────────────────────────────────────────
 
+    /**
+     * 활성 상태이면서 필수인 문항 중 답변이 누락된 것이 있는지 확인한다.
+     * strict=true (최종 제출) 일 때만 호출된다.
+     *
+     * @param questions          전체 문항 목록
+     * @param answerByQuestionId questionId → 답변 맵
+     * @param activeQuestionIds  조건분기 계산 결과 활성 문항 ID 집합
+     * @throws BusinessException ANSWER_REQUIRED_MISSING — 필수 문항 답변이 없을 때
+     */
     private void validateRequired(List<SurveyQuestion> questions,
-                                  Map<Long, AnswerDto> answerMap,
+                                  Map<Long, AnswerDto> answerByQuestionId,
                                   Set<Long> activeQuestionIds) {
-        for (SurveyQuestion q : questions) {
-            if (!Boolean.TRUE.equals(q.getRequired())) continue;   // 필수 아니면 skip
-            if (!activeQuestionIds.contains(q.getId()))   continue; // 비활성 문항은 skip
+        for (SurveyQuestion question : questions) {
+            if (!Boolean.TRUE.equals(question.getRequired())) continue;   // 필수 아니면 skip
+            if (!activeQuestionIds.contains(question.getId())) continue;  // 비활성 문항은 skip
 
-            if (!answerMap.containsKey(q.getId())) {
-                log.warn("필수 문항 누락: questionId={}, name={}", q.getId(), q.getQuestionName());
+            if (!answerByQuestionId.containsKey(question.getId())) {
+                log.warn("필수 문항 누락: questionId={}, name={}", question.getId(), question.getQuestionName());
                 throw new BusinessException(ErrorCode.ANSWER_REQUIRED_MISSING);
             }
         }
@@ -148,8 +172,15 @@ public class SurveyAnswerValidator {
     // 4~5) 유형별 필드 조합 + 옵션 ID 검증
     // ─────────────────────────────────────────────────────────────
 
+    /**
+     * 단일 답변에 대해 문항 유형별 검증을 수행한다.
+     *  - 요청의 type 이 실제 문항 유형과 일치하는지
+     *  - 유형별 세부 규칙 (SINGLE_CHOICE 는 1개 선택, RANKING 은 모든 옵션 포함 등)
+     *
+     * @param question 답변이 속한 문항
+     * @param answer   검증 대상 답변
+     */
     private void validateAnswerByType(SurveyQuestion question, AnswerDto answer) {
-        // 요청의 type 이 실제 문항 유형과 일치하는지
         if (question.getQuestionType() != answer.getType()) {
             log.warn("문항 유형 불일치: questionId={}, 실제={}, 요청={}",
                     question.getId(), question.getQuestionType(), answer.getType());
@@ -169,61 +200,76 @@ public class SurveyAnswerValidator {
         }
     }
 
+    /**
+     * 단일 선택: 선택 항목이 정확히 1개이고, 옵션 ID 가 유효해야 한다.
+     */
     private void validateSingleChoice(AnswerDto answer, Set<Long> validOptionIds) {
-        List<Long> selected = answer.getSelectedItemIds();
-        if (selected == null || selected.size() != 1) {
+        List<Long> selectedItemIds = answer.getSelectedItemIds();
+        if (selectedItemIds == null || selectedItemIds.size() != 1) {
             throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);
         }
-        if (!validOptionIds.contains(selected.get(0))) {
+        if (!validOptionIds.contains(selectedItemIds.get(0))) {
             throw new BusinessException(ErrorCode.ANSWER_INVALID_OPTION);
         }
     }
 
+    /**
+     * 복수 선택: 1개 이상 선택, 중복 선택 불가, 모든 옵션 ID 가 유효해야 한다.
+     */
     private void validateMultipleChoice(AnswerDto answer, Set<Long> validOptionIds) {
-        List<Long> selected = answer.getSelectedItemIds();
-        if (selected == null || selected.isEmpty()) {
+        List<Long> selectedItemIds = answer.getSelectedItemIds();
+        if (selectedItemIds == null || selectedItemIds.isEmpty()) {
             throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);
         }
         // 중복 선택 불가
-        if (new HashSet<>(selected).size() != selected.size()) {
+        if (new HashSet<>(selectedItemIds).size() != selectedItemIds.size()) {
             throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);
         }
-        for (Long itemId : selected) {
+        for (Long itemId : selectedItemIds) {
             if (!validOptionIds.contains(itemId)) {
                 throw new BusinessException(ErrorCode.ANSWER_INVALID_OPTION);
             }
         }
     }
 
+    /**
+     * 주관식: 공백이 아닌 텍스트가 존재해야 한다.
+     * (최대 길이는 AnswerDto @Size 에서 처리됨)
+     */
     private void validateSubjective(AnswerDto answer) {
-        String text = answer.getTextAnswer();
-        if (text == null || text.isBlank()) {
+        String textAnswer = answer.getTextAnswer();
+        if (textAnswer == null || textAnswer.isBlank()) {
             throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);
         }
-        // 최대 길이 제약은 AnswerDto @Size 에서 이미 처리됨
     }
 
+    /**
+     * 척도: scaleValue 가 존재해야 한다.
+     * (척도 범위 검증은 정책 확정 시 추가)
+     */
     private void validateScale(AnswerDto answer) {
         if (answer.getScaleValue() == null) {
             throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);
         }
-        // 척도 범위는 정책 확정 시 추가 검증
     }
 
+    /**
+     * 순위 선택: 모든 옵션이 중복 없이 포함되어야 하며, 부분 순위는 금지된다.
+     */
     private void validateRanking(AnswerDto answer, Set<Long> validOptionIds) {
-        List<Long> ranked = answer.getRankedItemIds();
-        if (ranked == null || ranked.isEmpty()) {
+        List<Long> rankedItemIds = answer.getRankedItemIds();
+        if (rankedItemIds == null || rankedItemIds.isEmpty()) {
             throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);
         }
         // 중복 없음
-        if (new HashSet<>(ranked).size() != ranked.size()) {
+        if (new HashSet<>(rankedItemIds).size() != rankedItemIds.size()) {
             throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);
         }
         // 모든 옵션이 포함되어야 함 (부분 순위 금지)
-        if (ranked.size() != validOptionIds.size()) {
+        if (rankedItemIds.size() != validOptionIds.size()) {
             throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);
         }
-        for (Long itemId : ranked) {
+        for (Long itemId : rankedItemIds) {
             if (!validOptionIds.contains(itemId)) {
                 throw new BusinessException(ErrorCode.ANSWER_INVALID_OPTION);
             }
