@@ -1,11 +1,16 @@
 package com.woongjin.survey.domain.survey.domain;
 
+import com.woongjin.survey.domain.survey.dto.submit.AnswerDto;
 import com.woongjin.survey.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.util.List;
 
 /**
  * 설문 응답 엔티티 - SVY_RSPN_TB 테이블 매핑
@@ -37,7 +42,9 @@ public class Answer extends BaseEntity {
 
     /**
      * 문항 답변 JSON
+     * Hibernate 6 내장 JSON 매핑 — 별도 Converter 불필요
      */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "QST_ANSWR", nullable = false, columnDefinition = "JSON")
-    private String answers;
+    private List<AnswerDto> answers;
 }

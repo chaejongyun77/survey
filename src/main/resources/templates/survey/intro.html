@@ -188,8 +188,8 @@
             /** 새로 시작 — draft 삭제 후 이동 */
             async onFresh() {
                 try {
-                    await axios.delete(
-                        `/api/external/v1/thinkbig/surveys/${this.surveyId}/draft`
+                    await axios.post(
+                        `/api/external/v1/thinkbig/surveys/${this.surveyId}/draft/delete`
                     );
                 } catch (e) {
                     console.warn('임시저장 삭제 실패 (무시):', e);

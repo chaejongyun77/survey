@@ -87,7 +87,7 @@ public class SurveyQueryController {
      * 임시저장 삭제
      * - 인트로에서 "새로 시작" 선택 시 호출
      */
-    @DeleteMapping("/{surveyId}/draft")
+    @PostMapping("/{surveyId}/draft/delete")
     public ApiResponse<Void> deleteDraft(
             @PathVariable Long surveyId,
             @AuthenticationPrincipal Long empId) {
