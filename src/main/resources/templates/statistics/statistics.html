@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head th:replace="~{fragments/head :: head('설문 통계')}"></head>
+
+<style>
+  * { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; }
+  .progress-bar { transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+</style>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<body class="bg-gray-50 min-h-screen">
+
+<!-- Thymeleaf 가 surveyId 를 JS 변수로 주입 -->
+<script th:inline="javascript">
+  const SVY_ID = /*[[${surveyId}]]*/ 0;
+</script>
+
+<div class="max-w-5xl mx-auto px-4 py-8" x-data="statisticsPage()" x-init="init()">
+
+  <!-- 헤더 -->
+  <header class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">설문 통계</h1>
+    <button class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white
+                   hover:bg-gray-50 transition-colors">
+      엑셀 다운로드
+    </button>
+  </header>
+
+  <!-- 탭 -->
+  <nav class="flex gap-1 bg-white border border-gray-100 rounded-xl p-1 mb-5">
+    <button class="flex-1 py-3 text-sm font-medium rounded-lg transition-colors"
+            :class="ui.tab === 'overview' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:bg-gray-50'"
+            @click="ui.tab = 'overview'">
+      응답 결과 조회
+    </button>
+    <button class="flex-1 py-3 text-sm font-medium rounded-lg transition-colors"
+            :class="ui.tab === 'questions' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:bg-gray-50'"
+            @click="ui.tab = 'questions'">
+      문항별 응답현황
+    </button>
+    <button class="flex-1 py-3 text-sm font-medium rounded-lg transition-colors"
+            :class="ui.tab === 'respondents' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:bg-gray-50'"
+            @click="ui.tab = 'respondents'">
+      응답자별 문항답변
+    </button>
+  </nav>
+
+  <!-- 로딩 -->
+  <div x-show="ui.isLoading" class="text-center py-20 text-gray-400 text-sm">
+    불러오는 중…
+  </div>
+
+  <!-- 본문 -->
+  <div x-show="!ui.isLoading">
+
+    <!-- ─────────── 설문 기본정보 요약 (모든 탭 공통) ─────────── -->
+    <section class="bg-white border border-gray-100 rounded-xl p-5 mb-5">
+      <h2 class="text-base font-semibold text-gray-900 mb-3">설문 기본정보 요약</h2>
+
+      <p class="text-sm text-gray-700 font-medium mb-4">
+        <span x-text="summary.title"></span>
+        <span class="text-gray-300 mx-1.5">·</span>
+        <span class="text-gray-500" x-text="formatDateRange(summary.beginDate, summary.endDate)"></span>
+        <span class="text-gray-300 mx-1.5">·</span>
+        <span class="text-gray-500" x-text="summary.site"></span>
+      </p>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <!-- 총 대상자 -->
+        <div class="bg-gray-50 rounded-lg px-4 py-4 text-center">
+          <p class="text-xs text-gray-500 mb-1">총 대상자</p>
+          <p class="text-2xl font-bold text-gray-900">
+            <span x-text="summary.totalTargetCount.toLocaleString()"></span>
+            <span class="text-sm font-normal text-gray-400 ml-0.5">명</span>
+          </p>
+        </div>
+        <!-- 응답 완료 -->
+        <div class="bg-gray-50 rounded-lg px-4 py-4 text-center">
+          <p class="text-xs text-gray-500 mb-1">응답 완료</p>
+          <p class="text-2xl font-bold text-gray-900">
+            <span x-text="summary.respondedCount.toLocaleString()"></span>
+            <span class="text-sm font-normal text-gray-400 ml-0.5">명</span>
+          </p>
+        </div>
+        <!-- 응답률 (강조) -->
+        <div class="bg-orange-50 rounded-lg px-4 py-4 text-center">
+          <p class="text-xs text-orange-600 mb-1">응답률</p>
+          <p class="text-2xl font-bold text-orange-500">
+            <span x-text="summary.responseRate"></span>
+            <span class="text-sm font-normal ml-0.5">%</span>
+          </p>
+        </div>
+        <!-- 미응답 -->
+        <div class="bg-gray-50 rounded-lg px-4 py-4 text-center">
+          <p class="text-xs text-gray-500 mb-1">미응답</p>
+          <p class="text-2xl font-bold text-gray-900">
+            <span x-text="summary.notRespondedCount.toLocaleString()"></span>
+            <span class="text-sm font-normal text-gray-400 ml-0.5">명</span>
+          </p>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-500">
+        마감까지 <span class="text-orange-500 font-semibold" x-text="summary.daysLeft + '일'"></span> 남음
+        <span class="text-gray-300 mx-2">·</span>
+        총 문항 수: <span class="text-gray-700" x-text="summary.totalQuestionCount + '문항'"></span>
+      </p>
+    </section>
+
+    <!-- ─────────── [탭1] 응답 결과 조회 — 조직별 응답률 ─────────── -->
+    <section x-show="ui.tab === 'overview'" class="bg-white border border-gray-100 rounded-xl p-5">
+      <h2 class="text-base font-semibold text-gray-900 mb-5">응답 결과 조회</h2>
+
+      <!-- 헤더 라인 -->
+      <div class="grid grid-cols-12 gap-3 text-xs text-gray-400 px-2 pb-2 border-b border-gray-100">
+        <div class="col-span-2">조직명</div>
+        <div class="col-span-7">응답률</div>
+        <div class="col-span-1 text-right">비율</div>
+        <div class="col-span-2 text-right">응답수</div>
+      </div>
+
+      <!-- 부서별 행 -->
+      <div class="divide-y divide-gray-50">
+        <template x-for="d in deptRates" :key="d.deptId">
+          <div class="grid grid-cols-12 gap-3 items-center px-2 py-3.5">
+            <!-- 조직명 -->
+            <div class="col-span-2 text-sm text-gray-700 font-medium" x-text="d.deptName"></div>
+
+            <!-- 진행률 바 -->
+            <div class="col-span-7">
+              <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full rounded-full progress-bar"
+                     :class="barColor(d)"
+                     :style="`width: ${d.responseRate}%`"></div>
+              </div>
+            </div>
+
+            <!-- 비율 -->
+            <div class="col-span-1 text-right text-sm font-semibold"
+                 :class="d.lowRate ? 'text-gray-400' : 'text-orange-500'"
+                 x-text="d.responseRate + '%'"></div>
+
+            <!-- 응답수 / 대상자 -->
+            <div class="col-span-2 text-right text-xs text-gray-400"
+                 x-text="d.respondedCount + '/' + d.targetCount + '명'"></div>
+          </div>
+        </template>
+
+        <!-- 빈 상태 -->
+        <div x-show="deptRates.length === 0" class="text-center py-10 text-gray-400 text-sm">
+          조회된 조직이 없습니다.
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-300 text-right mt-4">
+        기준: 마감일 70% 미만 조직은 회색 표시
+      </p>
+    </section>
+
+    <!-- [탭2], [탭3] 자리 — 추후 확장 -->
+    <section x-show="ui.tab === 'questions'" class="bg-white border border-gray-100 rounded-xl p-10 text-center text-gray-400 text-sm">
+      문항별 응답현황 — 준비중
+    </section>
+    <section x-show="ui.tab === 'respondents'" class="bg-white border border-gray-100 rounded-xl p-10 text-center text-gray-400 text-sm">
+      응답자별 문항답변 — 준비중
+    </section>
+
+  </div><!-- /본문 -->
+</div>
+
+<script>
+  function statisticsPage() {
+    return {
+      ui: {
+        tab: 'overview',
+        isLoading: true
+      },
+      summary: {
+        title: '', site: '', beginDate: '', endDate: '',
+        totalQuestionCount: 0, totalTargetCount: 0,
+        respondedCount: 0, notRespondedCount: 0,
+        responseRate: 0, daysLeft: 0
+      },
+      deptRates: [],
+
+      async init() {
+        try {
+          // 두 API 동시 호출
+          const [summaryRes, deptsRes] = await Promise.all([
+            axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/summary`),
+            axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/depts`)
+          ]);
+          this.summary = summaryRes.data.data;
+          this.deptRates = deptsRes.data.data;
+        } catch (e) {
+          console.error('[statistics] 조회 실패:', e);
+          alert('통계 데이터를 불러오지 못했습니다.');
+        } finally {
+          this.ui.isLoading = false;
+        }
+      },
+
+      /**
+       * 응답률에 따라 막대 색상 분기
+       * - lowRate(마감일 70% 미만) → 회색
+       * - 그 외 응답률 구간별로 진한/연한 오렌지로 강약
+       */
+      barColor(d) {
+        if (d.lowRate) return 'bg-gray-300';
+        if (d.responseRate >= 80) return 'bg-orange-500';
+        if (d.responseRate >= 60) return 'bg-orange-400';
+        return 'bg-orange-300';
+      },
+
+      /** "2026.03.18 ~ 03.25" 형태 — 같은 연/월이면 뒷부분 축약 */
+      formatDateRange(begin, end) {
+        if (!begin || !end) return '';
+        const b = new Date(begin);
+        const e = new Date(end);
+        const pad = (n) => String(n).padStart(2, '0');
+        const left = `${b.getFullYear()}.${pad(b.getMonth() + 1)}.${pad(b.getDate())}`;
+        const right = (b.getFullYear() === e.getFullYear() && b.getMonth() === e.getMonth())
+            ? `${pad(e.getDate())}`
+            : `${e.getFullYear()}.${pad(e.getMonth() + 1)}.${pad(e.getDate())}`;
+        return `${left} ~ ${right}`;
+      }
+    }
+  }
+</script>
+
+</body>
+</html>
