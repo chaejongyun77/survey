@@ -224,7 +224,6 @@ public class SurveyCommandService {
         log.info("[submit] ③ 답변 검증 통과");
 
         // ④ JSON 직렬화
-        String answersJson = serializeAnswers(answers);
 
         // ⑤ DB INSERT
         //    - AuditorAwareImpl 이 request attribute(clientEmpId) 에서 empId 를 읽어
@@ -232,7 +231,7 @@ public class SurveyCommandService {
         Answer response = Answer.builder()
                 .surveyId(surveyId)
                 .empId(empId)
-                .answers(answersJson)
+                .answers(answers)
                 .build();
 
         surveyResponseRepository.save(response);
@@ -243,16 +242,5 @@ public class SurveyCommandService {
         log.info("[submit] ⑥ 임시저장 삭제 완료: surveyId={}, empId={}", surveyId, empId);
     }
 
-    /**
-     * answers 리스트를 JSON 문자열로 직렬화한다.
-     */
-    private String serializeAnswers(List<SurveyAnswerDto> answers) {
-        try {
-            return objectMapper.writeValueAsString(answers);
-        } catch (JsonProcessingException e) {
-            log.error("답변 JSON 직렬화 실패", e);
-            throw new BusinessException(ErrorCode.ANSWER_INVALID_FORMAT);
-        }
-    }
 }
 

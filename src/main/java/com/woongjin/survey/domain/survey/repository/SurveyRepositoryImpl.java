@@ -2,8 +2,8 @@ package com.woongjin.survey.domain.survey.repository;
 
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import com.woongjin.survey.domain.survey.domain.QQuestion;
 import com.woongjin.survey.domain.survey.domain.QSurvey;
-import com.woongjin.survey.domain.survey.domain.QSurveyQuestion;
 import com.woongjin.survey.domain.survey.domain.QSurveyTargetPerson;
 import com.woongjin.survey.domain.survey.domain.enums.SurveyStatus;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
@@ -25,7 +25,7 @@ public class SurveyRepositoryImpl implements SurveyRepositoryCustom {
 
         QSurvey s               = QSurvey.survey;
         QSurveyTargetPerson tp  = QSurveyTargetPerson.surveyTargetPerson;
-        QSurveyQuestion q       = QSurveyQuestion.surveyQuestion;
+        QQuestion q       = QQuestion.question;
 
         SurveyIntroResponse result = queryFactory
                 .select(Projections.constructor(SurveyIntroResponse.class,

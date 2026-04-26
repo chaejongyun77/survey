@@ -126,7 +126,6 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .headers(h -> h
                 .frameOptions(f -> f.disable())
-                .addHeaderWriter((req, res) -> res.setHeader("X-Frame-Options", "SAMEORIGIN"))
             )
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth

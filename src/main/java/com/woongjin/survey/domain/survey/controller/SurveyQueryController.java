@@ -100,7 +100,7 @@ public class SurveyQueryController {
      * 설문 최종 제출
      *
      * [검증 계층]
-     *  1) @Valid : 형식 검증 (필드 null, 길이 등 — AnswerDto / SubmitRequest)
+     *  1) @Valid : 형식 검증 (필드 null, 길이 등 — SurveyAnswerDto / SubmitRequest)
      *  2) Service: 참여 가능 여부 재검증 (checkParticipate)
      *  3) Service: 답변 비즈니스 검증 (SurveyAnswerValidator)
      */

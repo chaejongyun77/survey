@@ -23,13 +23,13 @@ public class SurveyCommandController {
 
     @GetMapping("/check")
     public ApiResponse<String> checkSurvey(
-            @RequestParam String empNo
-           /* @RequestHeader("X-Internal-Api-Key") String apiKey*/) {
-/*
+            @RequestParam String empNo,
+            @RequestHeader("X-Internal-Api-Key") String apiKey) {
+
         if (!internalApiKey.equals(apiKey)) {
             log.warn("유효하지 않은 API Key 요청: empNo={}", empNo);
             return ApiResponse.error("인증 실패: 유효하지 않은 API Key");
-        }*/
+        }
 
         log.info("외부 설문 체크 요청: empNo={}", empNo);
         return surveyCommandService.issue(empNo);

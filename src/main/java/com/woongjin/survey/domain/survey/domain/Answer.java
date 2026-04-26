@@ -1,6 +1,6 @@
 package com.woongjin.survey.domain.survey.domain;
 
-import com.woongjin.survey.domain.survey.dto.submit.AnswerDto;
+import com.woongjin.survey.domain.survey.dto.submit.SurveyAnswerDto;
 import com.woongjin.survey.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -46,5 +46,5 @@ public class Answer extends BaseEntity {
      */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "QST_ANSWR", nullable = false, columnDefinition = "JSON")
-    private List<AnswerDto> answers;
+    private List<SurveyAnswerDto> answers;
 }

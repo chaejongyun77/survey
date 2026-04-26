@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
  * 설문 임시저장 Redis 저장소
  *
  * Key   : "survey:draft:{empId}:{surveyId}"
- * Value : JSON 직렬화된 List<AnswerDto>
+ * Value : JSON 직렬화된 List<SurveyAnswerDto>
  * TTL   : 7일
  */
 @Slf4j

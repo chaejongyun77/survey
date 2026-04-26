@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  * 설문 답변 비즈니스 검증기
  *
  * [검증 범위]
- * - 형식 검증(Bean Validation)은 AnswerDto 의 @NotNull / @Size 가 담당
+ * - 형식 검증(Bean Validation)은 SurveyAnswerDto 의 @NotNull / @Size 가 담당
  * - 이 클래스는 "설문 문항 정보와 교차 검증"이 필요한 로직을 수행
  *
  * [검증 순서]
@@ -233,7 +233,7 @@ public class SurveyAnswerValidator {
 
     /**
      * 주관식: 공백이 아닌 텍스트가 존재해야 한다.
-     * (최대 길이는 AnswerDto @Size 에서 처리됨)
+     * (최대 길이는 SurveyAnswerDto @Size 에서 처리됨)
      */
     private void validateSubjective(SurveyAnswerDto answer) {
         String textAnswer = answer.getTextAnswer();
