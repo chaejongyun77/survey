@@ -18,6 +18,8 @@
     class="w-full max-w-3xl mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 flex flex-col p-6 md:p-8 m-4 max-h-[90vh] overflow-y-auto"
     th:data-survey-id="${surveyId}"
     x-data="surveyIntro"
+    @draft-modal-resume.window="onResume"
+    @draft-modal-fresh.window="onFresh"
 >
     <!-- 로딩 -->
     <div x-show="isLoading" x-cloak class="flex flex-col justify-center items-center py-20 gap-3">
@@ -109,12 +111,11 @@
 <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('surveyIntro', () => ({
-            survey:         {},
-            surveyId:       null,
-            isLoading:      true,
-            isError:        false,
-            isStarting:     false,
-            showDraftModal: false,
+            survey:     {},
+            surveyId:   null,
+            isLoading:  true,
+            isError:    false,
+            isStarting: false,
 
             async init() {
                 this.surveyId = this.$el.dataset.surveyId ?? null;
@@ -167,7 +168,7 @@
 
                     if (hasDraft) {
                         // ③-A 임시저장 있음 → 모달 표시
-                        this.showDraftModal = true;
+                        this.$dispatch('show-draft-modal');
                     } else {
                         // ③-B 임시저장 없음 → 바로 이동
                         this.navigate();
