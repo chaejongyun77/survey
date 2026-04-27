@@ -21,17 +21,17 @@ public class SurveyCommandController {
     @Value("${demo.internal-api-key}")
     private String internalApiKey;
 
-    @GetMapping("/check")
-    public ApiResponse<String> checkSurvey(
-            @RequestParam String empNo,
+    @PostMapping("/token")
+    public ApiResponse<String> issueToken(
+            @RequestBody SurveyTokenIssueRequest request,
             @RequestHeader("X-Internal-Api-Key") String apiKey) {
 
         if (!internalApiKey.equals(apiKey)) {
-            log.warn("유효하지 않은 API Key 요청: empNo={}", empNo);
+            log.warn("유효하지 않은 API Key 요청: empNo={}", request.getEmpNo());
             return ApiResponse.error("인증 실패: 유효하지 않은 API Key");
         }
 
-        log.info("외부 설문 체크 요청: empNo={}", empNo);
-        return surveyCommandService.issue(empNo);
+        log.info("설문 토큰 발급 요청: empNo={}", request.getEmpNo());
+        return surveyCommandService.issue(request.getEmpNo());
     }
 }
