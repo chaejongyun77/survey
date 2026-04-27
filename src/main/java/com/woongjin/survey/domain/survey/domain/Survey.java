@@ -48,8 +48,8 @@ public class Survey extends BaseEntity {
     @Column(name = "END_DT", nullable = false)
     private LocalDateTime endDate;
 
-    @Column(name = "ENFRT_YN", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
-    private Boolean enforced;
+    @Column(name = "ESNTL_RSPN_YN", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    private Boolean essential;
 
     /** INTERN / LEADER / SELECTION */
     @Column(name = "TRPSN_TY", nullable = false, length = 10)

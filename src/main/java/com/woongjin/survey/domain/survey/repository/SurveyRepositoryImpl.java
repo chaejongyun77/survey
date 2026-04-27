@@ -42,7 +42,8 @@ public class SurveyRepositoryImpl implements SurveyRepositoryCustom {
                         com.querydsl.jpa.JPAExpressions
                                 .select(q.count())
                                 .from(q)
-                                .where(q.surveyId.eq(surveyId), q.deletedAt.isNull())
+                                .where(q.surveyId.eq(surveyId), q.deletedAt.isNull()),
+                        s.essential
                 ))
                 .from(s)
                 .where(

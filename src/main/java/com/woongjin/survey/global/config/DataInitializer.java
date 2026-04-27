@@ -133,7 +133,7 @@ public class DataInitializer implements ApplicationRunner {
                 .deviceType("ALL")
                 .beginDate(LocalDateTime.of(2026, 3, 18, 0, 0))
                 .endDate(LocalDateTime.of(2026, 12, 31, 23, 59))
-                .enforced(false)
+                .essential(false)
                 .targetPersonType("SELECTION")
                 .gender("ALL")
                 .minAge(20)

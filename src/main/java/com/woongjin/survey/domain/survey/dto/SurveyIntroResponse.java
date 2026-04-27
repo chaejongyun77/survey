@@ -30,5 +30,8 @@ public class SurveyIntroResponse {
 
     /** 설문 문항 수 (svy_qst_tb COUNT, 미삭제 기준) */
     private long questionCount;
+
+    /** 필수 응답 여부 (ESNTL_RSPN_YN) — true면 '다음에 참여' 불가 */
+    private Boolean essential;
 }
 

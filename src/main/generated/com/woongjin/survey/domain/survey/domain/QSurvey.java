@@ -37,7 +37,7 @@ public class QSurvey extends EntityPathBase<Survey> {
 
     public final DateTimePath<java.time.LocalDateTime> endDate = createDateTime("endDate", java.time.LocalDateTime.class);
 
-    public final BooleanPath enforced = createBoolean("enforced");
+    public final BooleanPath essential = createBoolean("essential");
 
     public final StringPath gender = createString("gender");
 
