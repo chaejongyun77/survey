@@ -1,5 +1,7 @@
 package com.woongjin.survey.domain.statistics.dto;
 
+import lombok.Builder;
+
 import java.time.LocalDateTime;
 
 /**
@@ -15,6 +17,7 @@ import java.time.LocalDateTime;
  *   여러 화면에서 동일하게 표시되므로 서버에서 계산하여 일관성 보장
  * - 응답률은 소수점 첫째자리까지 (69.9% 형태)
  */
+@Builder
 public record StatisticsSummaryResponse(
         Long surveyId,
         String title,           // "2026년 상반기 고객 만족도 조사"

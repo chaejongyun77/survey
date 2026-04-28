@@ -44,25 +44,25 @@ public class StatisticsQueryService {
         SurveySummaryProjection p = statisticsRepository.findSummaryBySurveyId(surveyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SURVEY_NOT_FOUND));
 
-        int targetCnt    = (int) p.totalTargetCount();
-        int respondedCnt = (int) p.respondedCount();
+        int targetCnt    = Math.toIntExact(p.totalTargetCount());
+        int respondedCnt = Math.toIntExact(p.respondedCount());
         int notResponded = Math.max(targetCnt - respondedCnt, 0);
         double rate      = calculateRate(respondedCnt, targetCnt);
         long daysLeft    = calculateDaysLeft(p.endDate());
 
-        return new StatisticsSummaryResponse(
-                p.surveyId(),
-                p.title(),
-                p.site(),
-                p.beginDate(),
-                p.endDate(),
-                (int) p.totalQuestionCount(),
-                targetCnt,
-                respondedCnt,
-                notResponded,
-                rate,
-                daysLeft
-        );
+        return StatisticsSummaryResponse.builder()
+                .surveyId(p.surveyId())
+                .title(p.title())
+                .site(p.site())
+                .beginDate(p.beginDate())
+                .endDate(p.endDate())
+                .totalQuestionCount(Math.toIntExact(p.totalQuestionCount()))
+                .totalTargetCount(targetCnt)
+                .respondedCount(respondedCnt)
+                .notRespondedCount(notResponded)
+                .responseRate(rate)
+                .daysLeft(daysLeft)
+                .build();
     }
 
     /**
@@ -79,8 +79,8 @@ public class StatisticsQueryService {
     }
 
     private DeptResponseRateResponse toResponse(DeptResponseRateProjection p) {
-        int targetCnt    = (int) p.targetCount();
-        int respondedCnt = (int) p.respondedCount();
+        int targetCnt    = Math.toIntExact(p.targetCount());
+        int respondedCnt = Math.toIntExact(p.respondedCount());
         double rate      = calculateRate(respondedCnt, targetCnt);
         boolean lowRate  = rate < LOW_RATE_THRESHOLD;
 
