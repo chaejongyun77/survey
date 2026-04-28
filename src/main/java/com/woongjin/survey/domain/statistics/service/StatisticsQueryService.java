@@ -74,7 +74,7 @@ public class StatisticsQueryService {
     public List<DeptResponseRateResponse> getDeptResponseRates(Long surveyId) {
         return statisticsRepository.findDeptResponseRates(surveyId).stream()
                 .map(this::toResponse)
-                .sorted(Comparator.comparingDouble(r -> r.responseRate()).reversed())
+                .sorted(Comparator.comparingDouble((DeptResponseRateResponse r) -> r.responseRate()).reversed())
                 .toList();
     }
 
