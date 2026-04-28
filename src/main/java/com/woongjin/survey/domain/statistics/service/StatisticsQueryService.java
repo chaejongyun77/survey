@@ -84,14 +84,14 @@ public class StatisticsQueryService {
         double rate      = calculateRate(respondedCnt, targetCnt);
         boolean lowRate  = rate < LOW_RATE_THRESHOLD;
 
-        return new DeptResponseRateResponse(
-                p.deptId(),
-                p.deptName(),
-                targetCnt,
-                respondedCnt,
-                rate,
-                lowRate
-        );
+        return DeptResponseRateResponse.builder()
+                .deptId(p.deptId())
+                .deptName(p.deptName())
+                .targetCount(targetCnt)
+                .respondedCount(respondedCnt)
+                .responseRate(rate)
+                .lowRate(lowRate)
+                .build();
     }
 
     /** 응답률 계산 — 소수점 첫째자리, 분모 0 방어 */
