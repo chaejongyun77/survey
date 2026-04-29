@@ -33,17 +33,17 @@
   <nav class="flex gap-1 bg-white border border-gray-100 rounded-xl p-1 mb-5">
     <button class="flex-1 py-3 text-sm font-medium rounded-lg transition-colors"
             :class="ui.tab === 'overview' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:bg-gray-50'"
-            @click="ui.tab = 'overview'">
+            @click="selectTab('overview')">
       응답 결과 조회
     </button>
     <button class="flex-1 py-3 text-sm font-medium rounded-lg transition-colors"
             :class="ui.tab === 'questions' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:bg-gray-50'"
-            @click="ui.tab = 'questions'">
+            @click="selectTab('questions')">
       문항별 응답현황
     </button>
     <button class="flex-1 py-3 text-sm font-medium rounded-lg transition-colors"
             :class="ui.tab === 'respondents' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:bg-gray-50'"
-            @click="ui.tab = 'respondents'">
+            @click="selectTab('respondents')">
       응답자별 문항답변
     </button>
   </nav>
@@ -164,8 +164,59 @@
     <section x-show="ui.tab === 'questions'" class="bg-white border border-gray-100 rounded-xl p-10 text-center text-gray-400 text-sm">
       문항별 응답현황 — 준비중
     </section>
-    <section x-show="ui.tab === 'respondents'" class="bg-white border border-gray-100 rounded-xl p-10 text-center text-gray-400 text-sm">
-      응답자별 문항답변 — 준비중
+    <!-- ─────────── [탭3] 응답자별 문항답변 ─────────── -->
+    <section x-show="ui.tab === 'respondents'" class="bg-white border border-gray-100 rounded-xl p-5">
+
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-semibold text-gray-900">응답자별 문항답변</h2>
+        <p class="text-xs text-gray-400" x-show="!ui.respondentsLoading && responseTotal > 0">
+          전체 <span class="text-gray-700 font-medium" x-text="responseTotal.toLocaleString()"></span>건 중
+          최근 <span class="text-gray-700 font-medium" x-text="Math.min(responseTotal, previewLimit).toLocaleString()"></span>건 표시
+        </p>
+      </div>
+
+      <!-- 로딩 -->
+      <div x-show="ui.respondentsLoading" class="text-center py-10 text-gray-400 text-sm">
+        불러오는 중…
+      </div>
+
+      <!-- 빈 상태 -->
+      <div x-show="!ui.respondentsLoading && responses.length === 0"
+           class="text-center py-10 text-gray-400 text-sm">
+        아직 응답이 없습니다.
+      </div>
+
+      <!-- 테이블 -->
+      <div x-show="!ui.respondentsLoading && responses.length > 0" class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead>
+          <tr class="text-xs text-gray-400 border-b border-gray-100">
+            <!-- 좌측 고정 컬럼 -->
+            <th class="sticky left-0 bg-white text-left font-normal px-3 py-2 min-w-[100px]">응답자</th>
+            <th class="sticky left-[100px] bg-white text-left font-normal px-3 py-2 min-w-[120px]">부서</th>
+            <!-- 동적 문항 컬럼 -->
+            <template x-for="q in questions" :key="q.questionId">
+              <th class="text-left font-normal px-3 py-2 min-w-[140px]" x-text="q.questionName"></th>
+            </template>
+          </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+          <template x-for="(r, idx) in responses" :key="idx">
+            <tr class="hover:bg-gray-50">
+              <!-- 좌측 고정 컬럼 -->
+              <td class="sticky left-0 bg-white px-3 py-3 font-medium text-gray-900" x-text="r.empName"></td>
+              <td class="sticky left-[100px] bg-white px-3 py-3 text-gray-600" x-text="r.deptName"></td>
+              <!-- 답변 셀 -->
+              <template x-for="q in questions" :key="q.questionId">
+                <td class="px-3 py-3 text-gray-700 align-top">
+                  <span x-html="renderAnswer(r, q)"></span>
+                </td>
+              </template>
+            </tr>
+          </template>
+          </tbody>
+        </table>
+      </div>
     </section>
 
   </div><!-- /본문 -->
@@ -176,7 +227,9 @@
     return {
       ui: {
         tab: 'overview',
-        isLoading: true
+        isLoading: true,
+        respondentsLoading: false,
+        respondentsLoaded: false
       },
       summary: {
         title: '', site: '', beginDate: '', endDate: '',
@@ -185,6 +238,10 @@
         responseRate: 0, daysLeft: 0
       },
       deptRates: [],
+      questions: [],
+      responses: [],
+      responseTotal: 0,
+      previewLimit: 50,
 
       async init() {
         try {
@@ -200,6 +257,78 @@
           alert('통계 데이터를 불러오지 못했습니다.');
         } finally {
           this.ui.isLoading = false;
+        }
+      },
+
+      /**
+       * 탭 전환 — 응답자별 문항답변 탭은 진입 시 lazy load
+       */
+      selectTab(tab) {
+        this.ui.tab = tab;
+        if (tab === 'respondents' && !this.ui.respondentsLoaded) {
+          this.loadRespondents();
+        }
+      },
+
+      /** 응답자별 문항답변 조회 */
+      async loadRespondents() {
+        this.ui.respondentsLoading = true;
+        try {
+          const res = await axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/responses`);
+          const data = res.data.data;
+          this.questions = data.questions;
+          this.responses = data.responses;
+          this.responseTotal = data.totalCount;
+          this.previewLimit = data.previewLimit;
+          this.ui.respondentsLoaded = true;
+        } catch (e) {
+          console.error('[statistics] 응답자별 문항답변 조회 실패:', e);
+          alert('응답자별 문항답변을 불러오지 못했습니다.');
+        } finally {
+          this.ui.respondentsLoading = false;
+        }
+      },
+
+      /**
+       * 응답 1셀 렌더링 — 문항 타입별로 분기
+       * - SINGLE_CHOICE / SCALE     : 항목 1개 → 라벨
+       * - MULTIPLE_CHOICE           : 여러 항목 → 줄바꿈
+       * - SUBJECTIVE                : textAnswer 그대로
+       * - RANKING                   : 순서대로 "1. 라벨" 형태
+       * - 미응답                    : "-" (회색)
+       */
+      renderAnswer(respondent, question) {
+        const ans = respondent.answers.find(a => a.questionId === question.questionId);
+        if (!ans) return '<span class="text-gray-300">-</span>';
+
+        const escape = (s) => String(s ?? '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        const itemMap = Object.fromEntries(question.items.map(i => [i.itemId, i.itemName]));
+        const labelOf = (id) => itemMap[id] ?? `(삭제됨)`;
+
+        switch (ans.type) {
+          case 'SINGLE_CHOICE':
+            return escape(labelOf(ans.selectedItemIds?.[0]));
+
+          case 'MULTIPLE_CHOICE':
+            return (ans.selectedItemIds ?? [])
+                .map(id => escape(labelOf(id)))
+                .join('<br>');
+
+          case 'SUBJECTIVE':
+            return escape(ans.textAnswer);
+
+          case 'SCALE':
+            return escape(labelOf(ans.scaleValue));
+
+          case 'RANKING':
+            return (ans.rankedItemIds ?? [])
+                .map((id, i) => `${i + 1}. ${escape(labelOf(id))}`)
+                .join('<br>');
+
+          default:
+            return '<span class="text-gray-300">-</span>';
         }
       },
 

@@ -1,7 +1,9 @@
 package com.woongjin.survey.domain.statistics.repository;
 
+import com.woongjin.survey.domain.statistics.dto.RespondentAnswerDto;
 import com.woongjin.survey.domain.statistics.dto.projection.DeptResponseRateProjection;
 import com.woongjin.survey.domain.statistics.dto.projection.SurveySummaryProjection;
+import com.woongjin.survey.domain.statistics.dto.QuestionMetaDto;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,4 +29,34 @@ public interface StatisticsRepository {
      * - 응답률 내림차순 정렬은 Service 레이어에서 수행
      */
     List<DeptResponseRateProjection> findDeptResponseRates(Long surveyId);
+
+    /**
+     * 응답자별 문항답변 — 최근 응답순 N건 조회 (미리보기용)
+     *
+     * - Answer + Employee + Department JOIN 한 번으로 처리 (N+1 방지)
+     * - QST_ANSWR JSON 은 Hibernate 가 List<SurveyAnswerDto> 로 자동 매핑
+     * - 정렬: FRST_CRTN_DT DESC (가장 최근 응답이 위로)
+     *
+     * @param surveyId 설문 ID
+     * @param limit    최대 조회 건수 (예: 50)
+     */
+    List<RespondentAnswerDto> findRecentResponses(Long surveyId, int limit);
+
+    /**
+     * 응답자별 문항답변 — 전체 응답 수 카운트
+     *
+     * - findRecentResponses 가 limit 으로 자른 미리보기만 반환하므로,
+     *   "전체 응답 X건 중 N건 표시" 안내 문구를 위해 별도 카운트 제공
+     * - SVY_ID 인덱스 전제 (없으면 풀스캔)
+     */
+    int countResponses(Long surveyId);
+
+    /**
+     * 응답자별 문항답변 — 문항 메타(+ 항목) 조회
+     *
+     * - Question + QuestionItem fetch join (한 번의 쿼리)
+     * - 미삭제 문항만 / 항목은 전체 (삭제된 항목도 포함 → 과거 응답 매핑용)
+     * - 정렬: 문항 sortOrder ASC
+     */
+    List<QuestionMetaDto> findQuestionsWithItems(Long surveyId);
 }

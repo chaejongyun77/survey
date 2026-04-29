@@ -1,6 +1,7 @@
 package com.woongjin.survey.domain.statistics.controller;
 
 import com.woongjin.survey.domain.statistics.dto.DeptResponseRateResponse;
+import com.woongjin.survey.domain.statistics.dto.ResponseListResponse;
 import com.woongjin.survey.domain.statistics.dto.StatisticsSummaryResponse;
 import com.woongjin.survey.domain.statistics.service.StatisticsQueryService;
 import com.woongjin.survey.global.response.ApiResponse;
@@ -45,6 +46,19 @@ public class StatisticsController {
         return ApiResponse.success(
                 "조직별 응답률 조회 성공",
                 statisticsQueryService.getDeptResponseRates(surveyId)
+        );
+    }
+
+    /**
+     * 응답자별 문항답변 — 최근 N건 미리보기 조회
+     * - 화면 미리보기용 (현재 50건)
+     * - 전체 응답은 엑셀 다운로드 API 로 별도 제공
+     */
+    @GetMapping("/responses")
+    public ApiResponse<ResponseListResponse> getResponseList(@PathVariable Long surveyId) {
+        return ApiResponse.success(
+                "응답자별 문항답변 조회 성공",
+                statisticsQueryService.getResponseList(surveyId)
         );
     }
 }
