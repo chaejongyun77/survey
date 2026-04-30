@@ -1,5 +1,6 @@
 package com.woongjin.survey.domain.statistics.dto;
 
+import com.woongjin.survey.domain.survey.domain.Question;
 import com.woongjin.survey.domain.survey.domain.enums.QuestionType;
 
 import java.util.List;
@@ -27,4 +28,10 @@ public record QuestionMetaDto(
         Integer sortOrder,
         List<QuestionItemMetaDto> items   // SUBJECTIVE 는 빈 리스트
 ) {
+    public static QuestionMetaDto from(Question q) {
+        List<QuestionItemMetaDto> items = q.getItems().stream()
+                .map(QuestionItemMetaDto::from)
+                .toList();
+        return new QuestionMetaDto(q.getId(), q.getQuestionName(), q.getQuestionType(), q.getSortOrder(), items);
+    }
 }

@@ -1,5 +1,7 @@
 package com.woongjin.survey.domain.statistics.dto;
 
+import com.woongjin.survey.domain.survey.domain.QuestionItem;
+
 /**
  * 문항 항목(선택지) 메타 정보 — 통계 응답용
  *
@@ -17,4 +19,7 @@ public record QuestionItemMetaDto(
         String itemName,
         Integer sortOrder
 ) {
+    public static QuestionItemMetaDto from(QuestionItem item) {
+        return new QuestionItemMetaDto(item.getId(), item.getItemName(), item.getSortOrder());
+    }
 }

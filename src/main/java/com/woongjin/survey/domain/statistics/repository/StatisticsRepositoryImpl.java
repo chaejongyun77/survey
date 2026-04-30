@@ -5,7 +5,6 @@ import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.woongjin.survey.domain.employee.domain.QDepartment;
 import com.woongjin.survey.domain.employee.domain.QEmployee;
-import com.woongjin.survey.domain.statistics.dto.QuestionItemMetaDto;
 import com.woongjin.survey.domain.statistics.dto.QuestionMetaDto;
 import com.woongjin.survey.domain.statistics.dto.RespondentAnswerDto;
 import com.woongjin.survey.domain.statistics.dto.projection.DeptResponseRateProjection;
@@ -178,25 +177,7 @@ public class StatisticsRepositoryImpl implements StatisticsRepository {
                 .fetch();
 
         return result.stream()
-                .map(this::toQuestionMetaDto)
+                .map(QuestionMetaDto::from)
                 .toList();
-    }
-
-    private QuestionMetaDto toQuestionMetaDto(Question q) {
-        List<QuestionItemMetaDto> items = q.getItems().stream()
-                .map(item -> new QuestionItemMetaDto(
-                        item.getId(),
-                        item.getItemName(),
-                        item.getSortOrder()
-                ))
-                .toList();
-
-        return new QuestionMetaDto(
-                q.getId(),
-                q.getQuestionName(),
-                q.getQuestionType(),
-                q.getSortOrder(),
-                items
-        );
     }
 }
