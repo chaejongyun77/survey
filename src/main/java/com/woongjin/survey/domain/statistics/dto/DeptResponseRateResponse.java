@@ -1,5 +1,7 @@
 package com.woongjin.survey.domain.statistics.dto;
 
+import com.woongjin.survey.domain.statistics.dto.projection.DeptResponseRateProjection;
+
 /**
  * 조직별 응답률 — 응답 DTO
  *
@@ -18,4 +20,18 @@ public record DeptResponseRateResponse(
         double responseRate,   // %, 소수 첫째자리
         boolean lowRate        // 회색 표시 여부
 ) {
+    public static DeptResponseRateResponse from(
+            DeptResponseRateProjection p,
+            double responseRate,
+            boolean lowRate
+    ) {
+        return new DeptResponseRateResponse(
+                p.deptId(),
+                p.deptName(),
+                (int) p.targetCount(),
+                (int) p.respondedCount(),
+                responseRate,
+                lowRate
+        );
+    }
 }

@@ -58,19 +58,7 @@ public class StatisticsQueryService {
         double rate      = calculateRate(respondedCnt, targetCnt);
         long daysLeft    = calculateDaysLeft(p.endDate());
 
-        return new StatisticsSummaryResponse(
-                p.surveyId(),
-                p.title(),
-                p.site(),
-                p.beginDate(),
-                p.endDate(),
-                (int) p.totalQuestionCount(),
-                targetCnt,
-                respondedCnt,
-                notResponded,
-                rate,
-                daysLeft
-        );
+        return StatisticsSummaryResponse.from(p, notResponded, rate, daysLeft);
     }
 
     /**
@@ -98,14 +86,7 @@ public class StatisticsQueryService {
         double rate      = calculateRate(respondedCnt, targetCnt);
         boolean lowRate  = isDeadlineToday && rate < LOW_RATE_THRESHOLD;
 
-        return new DeptResponseRateResponse(
-                p.deptId(),
-                p.deptName(),
-                targetCnt,
-                respondedCnt,
-                rate,
-                lowRate
-        );
+        return DeptResponseRateResponse.from(p, rate, lowRate);
     }
 
     /** 응답률 계산 — 소수점 첫째자리, 분모 0 방어 */

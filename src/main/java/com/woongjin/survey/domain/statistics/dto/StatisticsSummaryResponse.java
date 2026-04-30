@@ -1,5 +1,7 @@
 package com.woongjin.survey.domain.statistics.dto;
 
+import com.woongjin.survey.domain.statistics.dto.projection.SurveySummaryProjection;
+
 import java.time.LocalDateTime;
 
 /**
@@ -28,4 +30,24 @@ public record StatisticsSummaryResponse(
         double responseRate,    // 응답률 (%)
         long daysLeft           // 마감까지 남은 일수
 ) {
+    public static StatisticsSummaryResponse from(
+            SurveySummaryProjection p,
+            int notRespondedCount,
+            double responseRate,
+            long daysLeft
+    ) {
+        return new StatisticsSummaryResponse(
+                p.surveyId(),
+                p.title(),
+                p.site(),
+                p.beginDate(),
+                p.endDate(),
+                (int) p.totalQuestionCount(),
+                (int) p.totalTargetCount(),
+                (int) p.respondedCount(),
+                notRespondedCount,
+                responseRate,
+                daysLeft
+        );
+    }
 }
