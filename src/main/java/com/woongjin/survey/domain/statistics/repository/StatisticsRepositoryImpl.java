@@ -145,20 +145,6 @@ public class StatisticsRepositoryImpl implements StatisticsRepository {
     }
 
     @Override
-    public int countResponses(Long surveyId) {
-
-        QAnswer a = QAnswer.answer;
-
-        Long count = queryFactory
-                .select(a.count())
-                .from(a)
-                .where(a.surveyId.eq(surveyId))
-                .fetchOne();
-
-        return count == null ? 0 : count.intValue();
-    }
-
-    @Override
     public List<QuestionMetaDto> findQuestionsWithItems(Long surveyId) {
 
         QQuestion q     = QQuestion.question;

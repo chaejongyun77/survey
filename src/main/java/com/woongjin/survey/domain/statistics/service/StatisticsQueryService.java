@@ -107,7 +107,6 @@ public class StatisticsQueryService {
      *
      * - questions : 동적 컬럼 헤더 + 라벨 매핑 데이터 (전체, limit 없음)
      * - responses : 최근 응답자 (현재 30건)
-     * - totalCount: 전체 응답 수 ("총 X건 중 N건 표시" 안내용)
      *
      * 전체 응답은 엑셀 다운로드 API 로 별도 제공
      */
@@ -124,8 +123,6 @@ public class StatisticsQueryService {
         List<RespondentAnswerDto> responses =
                 statisticsRepository.findRecentResponses(surveyId, RESPONDENT_PREVIEW_LIMIT);
 
-        int totalCount = statisticsRepository.countResponses(surveyId);
-
-        return new ResponseListResponse(questions, responses, totalCount, RESPONDENT_PREVIEW_LIMIT);
+        return new ResponseListResponse(questions, responses);
     }
 }

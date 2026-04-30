@@ -38,18 +38,9 @@ public interface StatisticsRepository {
      * - 정렬: FRST_CRTN_DT DESC (가장 최근 응답이 위로)
      *
      * @param surveyId 설문 ID
-     * @param limit    최대 조회 건수 (예: 50)
+     * @param limit    최대 조회 건수 (예: 30)
      */
     List<RespondentAnswerDto> findRecentResponses(Long surveyId, int limit);
-
-    /**
-     * 응답자별 문항답변 — 전체 응답 수 카운트
-     *
-     * - findRecentResponses 가 limit 으로 자른 미리보기만 반환하므로,
-     *   "전체 응답 X건 중 N건 표시" 안내 문구를 위해 별도 카운트 제공
-     * - SVY_ID 인덱스 전제 (없으면 풀스캔)
-     */
-    int countResponses(Long surveyId);
 
     /**
      * 응답자별 문항답변 — 문항 메타(+ 항목) 조회
