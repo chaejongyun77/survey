@@ -32,6 +32,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StatisticsQueryService {
 
+    private static final double LOW_RATE_THRESHOLD = 70.0;
     private static final int RESPONSE_PREVIEW_LIMIT = 50;
 
     private final StatisticsRepository statisticsRepository;
@@ -57,9 +58,17 @@ public class StatisticsQueryService {
         boolean isDeadlineToday = LocalDate.now().isEqual(survey.getEndDate().toLocalDate());
 
         return statisticsRepository.findDeptResponseRates(surveyId).stream()
-                .map(p -> DeptResponseRateResponse.from(p, isDeadlineToday))
+                .map(p -> {
+                    double rate = calculateRate(p.respondedCount(), p.targetCount());
+                    return DeptResponseRateResponse.from(p, rate, isDeadlineToday && rate < LOW_RATE_THRESHOLD);
+                })
                 .sorted(Comparator.comparingDouble(DeptResponseRateResponse::responseRate).reversed())
                 .toList();
+    }
+
+    private static double calculateRate(long respondedCnt, long targetCnt) {
+        if (targetCnt == 0) return 0.0;
+        return Math.round((double) respondedCnt / targetCnt * 100 * 10) / 10.0;
     }
 
     /**
