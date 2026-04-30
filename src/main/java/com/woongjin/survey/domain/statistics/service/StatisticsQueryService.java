@@ -41,7 +41,7 @@ import java.util.List;
 public class StatisticsQueryService {
 
     private static final double LOW_RATE_THRESHOLD = 70.0;
-    private static final int RESPONSE_PREVIEW_LIMIT = 50;
+    private static final int RESPONDENT_PREVIEW_LIMIT = 30;
 
     private final StatisticsRepository statisticsRepository;
     private final SurveyRepository surveyRepository;
@@ -124,8 +124,8 @@ public class StatisticsQueryService {
     /**
      * 응답자별 문항답변 — 최근 N건 미리보기 조회
      *
-     * - questions : 동적 컬럼 헤더 + 라벨 매핑 데이터 (전체)
-     * - responses : limit 으로 자른 최근 응답 (현재 50건)
+     * - questions : 동적 컬럼 헤더 + 라벨 매핑 데이터 (전체, 좌우 스크롤)
+     * - responses : limit 으로 자른 최근 응답 (현재 30건)
      * - totalCount: 전체 응답 수 ("총 X건 중 N건 표시" 안내용)
      *
      * 전체 응답은 엑셀 다운로드 API 로 별도 제공
@@ -141,10 +141,10 @@ public class StatisticsQueryService {
         List<QuestionMetaDto> questions = statisticsRepository.findQuestionsWithItems(surveyId);
 
         List<RespondentAnswerDto> responses =
-                statisticsRepository.findRecentResponses(surveyId, RESPONSE_PREVIEW_LIMIT);
+                statisticsRepository.findRecentResponses(surveyId, RESPONDENT_PREVIEW_LIMIT);
 
         int totalCount = statisticsRepository.countResponses(surveyId);
 
-        return new ResponseListResponse(questions, responses, totalCount, RESPONSE_PREVIEW_LIMIT);
+        return new ResponseListResponse(questions, responses, totalCount, RESPONDENT_PREVIEW_LIMIT);
     }
 }
