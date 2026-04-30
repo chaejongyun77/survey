@@ -22,6 +22,6 @@ public record ResponseListResponse(
         List<QuestionMetaDto> questions,        // 문항 메타 (헤더 + 라벨 매핑)
         List<RespondentAnswerDto> responses,    // 응답자 목록 (최근 N건)
         int totalCount,                         // 전체 응답 수 (안내용)
-        int previewLimit                        // 미리보기 limit 값 (예: 50)
+        int previewLimit                        // 응답자 미리보기 limit 값 (예: 30)
 ) {
 }
