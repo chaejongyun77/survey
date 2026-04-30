@@ -169,10 +169,6 @@
 
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-base font-semibold text-gray-900">응답자별 문항답변</h2>
-        <p class="text-xs text-gray-400" x-show="!ui.respondentsLoading && responseTotal > 0">
-          전체 <span class="text-gray-700 font-medium" x-text="responseTotal.toLocaleString()"></span>건 중
-          최근 <span class="text-gray-700 font-medium" x-text="Math.min(responseTotal, previewLimit).toLocaleString()"></span>건 표시
-        </p>
       </div>
 
       <!-- 로딩 -->
@@ -240,8 +236,6 @@
       deptRates: [],
       questions: [],
       responses: [],
-      responseTotal: 0,
-      previewLimit: 50,
 
       async init() {
         try {
@@ -278,8 +272,6 @@
           const data = res.data.data;
           this.questions = data.questions;
           this.responses = data.responses;
-          this.responseTotal = data.totalCount;
-          this.previewLimit = data.previewLimit;
           this.ui.respondentsLoaded = true;
         } catch (e) {
           console.error('[statistics] 응답자별 문항답변 조회 실패:', e);
