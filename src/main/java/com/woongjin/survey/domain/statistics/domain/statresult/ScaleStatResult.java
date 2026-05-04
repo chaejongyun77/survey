@@ -1,4 +1,4 @@
-package com.woongjin.survey.domain.statistics.domain.statdata;
+package com.woongjin.survey.domain.statistics.domain.statresult;
 
 import java.util.Map;
 
@@ -12,8 +12,8 @@ import java.util.Map;
  * [예시]
  *  { "valueCounts": { "4": 1, "5": 2 }, "average": 4.67 }
  */
-public record ScaleStatData(
+public record ScaleStatResult(
         Map<Integer, Integer> valueCounts,
         double average
-) implements QuestionStatData {
+) implements QuestionStatResult {
 }
