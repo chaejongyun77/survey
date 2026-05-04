@@ -3,7 +3,6 @@ package com.woongjin.survey.domain.statistics.batch;
 import com.woongjin.survey.domain.statistics.batch.processor.StatisticsItemProcessor;
 import com.woongjin.survey.domain.statistics.batch.writer.StatisticsItemWriter;
 import com.woongjin.survey.domain.statistics.domain.QuestionStat;
-import com.woongjin.survey.domain.survey.domain.enums.SurveyStatus;
 import com.woongjin.survey.domain.survey.repository.SurveyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +17,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -72,10 +70,7 @@ public class StatisticsBatchConfig {
      * (수만 개 단위라면 JpaPagingItemReader 등으로 페이징 필요)
      */
     private ItemReader<Long> activeSurveyIdReader() {
-        List<Long> ids = surveyRepository.findActiveSurveyIds(
-                SurveyStatus.APPROVED,
-                LocalDateTime.now()
-        );
+        List<Long> ids = surveyRepository.findActiveSurveyIds();
         log.info("[stat-batch] 집계 대상 설문 수: {}", ids.size());
         return new ListItemReader<>(ids);
     }
