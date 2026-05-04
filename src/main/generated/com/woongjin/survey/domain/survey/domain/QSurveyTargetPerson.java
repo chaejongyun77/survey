@@ -4,6 +4,8 @@ import static com.querydsl.core.types.PathMetadataFactory.*;
 
 import com.querydsl.core.types.dsl.*;
 
+import com.querydsl.core.types.dsl.StringTemplate;
+
 import com.querydsl.core.types.PathMetadata;
 import javax.annotation.processing.Generated;
 import com.querydsl.core.types.Path;
@@ -13,6 +15,7 @@ import com.querydsl.core.types.dsl.PathInits;
 /**
  * QSurveyTargetPerson is a Querydsl query type for SurveyTargetPerson
  */
+@SuppressWarnings("this-escape")
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QSurveyTargetPerson extends EntityPathBase<SurveyTargetPerson> {
 

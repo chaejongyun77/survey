@@ -4,6 +4,8 @@ import static com.querydsl.core.types.PathMetadataFactory.*;
 
 import com.querydsl.core.types.dsl.*;
 
+import com.querydsl.core.types.dsl.StringTemplate;
+
 import com.querydsl.core.types.PathMetadata;
 import javax.annotation.processing.Generated;
 import com.querydsl.core.types.Path;
@@ -12,6 +14,7 @@ import com.querydsl.core.types.Path;
 /**
  * QSurveyTargetPersonId is a Querydsl query type for SurveyTargetPersonId
  */
+@SuppressWarnings("this-escape")
 @Generated("com.querydsl.codegen.DefaultEmbeddableSerializer")
 public class QSurveyTargetPersonId extends BeanPath<SurveyTargetPersonId> {
 
