@@ -1,8 +1,11 @@
 package com.woongjin.survey.domain.statistics.batch.processor;
 
-import com.woongjin.survey.domain.statistics.aggregator.QuestionStatAggregator;
 import com.woongjin.survey.domain.statistics.domain.QuestionStat;
+import com.woongjin.survey.domain.statistics.domain.statdata.ChoiceStatData;
 import com.woongjin.survey.domain.statistics.domain.statdata.QuestionStatData;
+import com.woongjin.survey.domain.statistics.domain.statdata.RankingStatData;
+import com.woongjin.survey.domain.statistics.domain.statdata.ScaleStatData;
+import com.woongjin.survey.domain.statistics.domain.statdata.SubjectiveStatData;
 import com.woongjin.survey.domain.survey.domain.Answer;
 import com.woongjin.survey.domain.survey.domain.Question;
 import com.woongjin.survey.domain.survey.domain.enums.QuestionType;
@@ -27,12 +30,8 @@ import java.util.Map;
  *  1) 해당 설문의 문항 메타 조회
  *  2) 해당 설문의 응답 전체 로드
  *  3) 응답 JSON 을 펼쳐 문항 ID 별로 그룹핑
- *  4) 문항별로 타입에 맞는 Aggregator 호출 → QuestionStatData 생성
+ *  4) 문항별로 타입에 맞는 집계 수행 → QuestionStatData 생성
  *  5) QuestionStat 엔티티로 조립해 List 로 반환
- *
- * [확장 포인트]
- *  - 새 문항 타입이 추가되면 새 Aggregator 만 추가하면 됨
- *  - Spring 이 List<QuestionStatAggregator> 로 모든 구현체 자동 주입
  */
 @Slf4j
 @Component
@@ -41,13 +40,11 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
 
     private final SurveyQuestionRepository surveyQuestionRepository;
     private final SurveyResponseRepository surveyResponseRepository;
-    private final List<QuestionStatAggregator> aggregators;
 
     @Override
     public List<QuestionStat> process(Long surveyId) {
         log.info("[stat-batch] 설문 집계 시작 surveyId={}", surveyId);
 
-        // 1) 문항 메타 (타입 정보 필요)
         List<Question> questions = surveyQuestionRepository
                 .findBySurveyIdAndDeletedAtIsNullOrderBySortOrderAsc(surveyId);
 
@@ -56,18 +53,14 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
             return List.of();
         }
 
-        // 2) 응답 전체 로드
         List<Answer> responses = surveyResponseRepository.findBySurveyId(surveyId);
-
-        // 3) 응답 JSON 펼쳐서 문항 ID 별로 그룹핑
         Map<Long, List<SurveyAnswerDto>> answersByQuestion = groupByQuestionId(responses);
 
-        // 4) 문항별 집계
         LocalDateTime now = LocalDateTime.now();
         List<QuestionStat> result = new ArrayList<>(questions.size());
         for (Question q : questions) {
             List<SurveyAnswerDto> answers = answersByQuestion.getOrDefault(q.getId(), List.of());
-            result.add(aggregateOne(q, answers, now));
+            result.add(toQuestionStat(q, answers, now));
         }
 
         log.info("[stat-batch] 설문 집계 완료 surveyId={}, 응답수={}, 문항수={}",
@@ -75,16 +68,9 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
         return result;
     }
 
-    /** 한 문항에 대한 집계 — Aggregator 매칭 + QuestionStat 조립 */
-    private QuestionStat aggregateOne(Question question, List<SurveyAnswerDto> answers, LocalDateTime now) {
+    private QuestionStat toQuestionStat(Question question, List<SurveyAnswerDto> answers, LocalDateTime now) {
         QuestionType type = question.getQuestionType();
-        QuestionStatAggregator aggregator = aggregators.stream()
-                .filter(a -> a.supports(type))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "문항 타입에 대응하는 Aggregator 없음: " + type));
-
-        QuestionStatData data = aggregator.aggregate(answers);
+        QuestionStatData data = aggregate(type, answers);
 
         return QuestionStat.builder()
                 .surveyId(question.getSurveyId())
@@ -94,6 +80,77 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
                 .statData(data)
                 .aggregatedAt(now)
                 .build();
+    }
+
+    private QuestionStatData aggregate(QuestionType type, List<SurveyAnswerDto> answers) {
+        return switch (type) {
+            case SINGLE_CHOICE, MULTIPLE_CHOICE -> aggregateChoice(answers);
+            case SCALE                          -> aggregateScale(answers);
+            case SUBJECTIVE                     -> aggregateSubjective(answers);
+            case RANKING                        -> aggregateRanking(answers);
+        };
+    }
+
+    /** 선택형: itemId 별 선택 횟수 카운트. MULTIPLE 의 경우 한 응답자가 여러 itemId 가질 수 있음. */
+    private ChoiceStatData aggregateChoice(List<SurveyAnswerDto> answers) {
+        Map<Long, Integer> itemCounts = new HashMap<>();
+        for (SurveyAnswerDto a : answers) {
+            List<Long> selected = a.getSelectedItemIds();
+            if (selected == null) continue;
+            for (Long itemId : selected) {
+                itemCounts.merge(itemId, 1, Integer::sum);
+            }
+        }
+        return new ChoiceStatData(itemCounts);
+    }
+
+    /** 척도형: 점수별 카운트 + 평균(소수 둘째자리). */
+    private ScaleStatData aggregateScale(List<SurveyAnswerDto> answers) {
+        Map<Integer, Integer> valueCounts = new HashMap<>();
+        long sum = 0;
+        int validCount = 0;
+
+        for (SurveyAnswerDto a : answers) {
+            Integer value = a.getScaleValue();
+            if (value == null) continue;
+            valueCounts.merge(value, 1, Integer::sum);
+            sum += value;
+            validCount++;
+        }
+
+        double average = (validCount == 0) ? 0.0
+                : Math.round((double) sum / validCount * 100) / 100.0;
+
+        return new ScaleStatData(valueCounts, average);
+    }
+
+    /** 주관식: 비어있지 않은 응답 수만 집계. 텍스트는 통계에 저장하지 않음. */
+    private SubjectiveStatData aggregateSubjective(List<SurveyAnswerDto> answers) {
+        int answered = 0;
+        for (SurveyAnswerDto a : answers) {
+            String text = a.getTextAnswer();
+            if (text != null && !text.isBlank()) {
+                answered++;
+            }
+        }
+        return new SubjectiveStatData(answered);
+    }
+
+    /** 순위형: itemId → (순위 → 카운트) 이중 맵. 배열 index 0 이 1순위. */
+    private RankingStatData aggregateRanking(List<SurveyAnswerDto> answers) {
+        Map<Long, Map<Integer, Integer>> rankCounts = new HashMap<>();
+        for (SurveyAnswerDto a : answers) {
+            List<Long> ranked = a.getRankedItemIds();
+            if (ranked == null) continue;
+            for (int i = 0; i < ranked.size(); i++) {
+                Long itemId = ranked.get(i);
+                int rank = i + 1;
+                rankCounts
+                        .computeIfAbsent(itemId, k -> new HashMap<>())
+                        .merge(rank, 1, Integer::sum);
+            }
+        }
+        return new RankingStatData(rankCounts);
     }
 
     /**
