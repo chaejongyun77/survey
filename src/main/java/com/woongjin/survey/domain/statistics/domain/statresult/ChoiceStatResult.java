@@ -1,4 +1,4 @@
-package com.woongjin.survey.domain.statistics.domain.statdata;
+package com.woongjin.survey.domain.statistics.domain.statresult;
 
 import java.util.Map;
 
@@ -15,7 +15,7 @@ import java.util.Map;
  *  - MULTIPLE_CHOICE 의 경우 한 응답자가 여러 선택지를 고를 수 있어
  *    값들의 합 ≠ 응답자 수. 응답자 수는 QuestionStat.totalResponseCount 를 참조.
  */
-public record ChoiceStatData(
+public record ChoiceStatResult(
         Map<Long, Integer> itemCounts
-) implements QuestionStatData {
+) implements QuestionStatResult {
 }

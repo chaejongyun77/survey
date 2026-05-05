@@ -1,4 +1,4 @@
-package com.woongjin.survey.domain.statistics.domain.statdata;
+package com.woongjin.survey.domain.statistics.domain.statresult;
 
 /**
  * 주관식 집계 결과.
@@ -14,7 +14,7 @@ package com.woongjin.survey.domain.statistics.domain.statdata;
  *  화면에서 "응답 내용 보기"를 누르면 그때 SVY_RSPN_TB 에서
  *  페이징 조회로 가져온다.
  */
-public record SubjectiveStatData(
+public record SubjectiveStatResult(
         int answeredCount
-) implements QuestionStatData {
+) implements QuestionStatResult {
 }

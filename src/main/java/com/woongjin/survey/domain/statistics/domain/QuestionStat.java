@@ -1,6 +1,6 @@
 package com.woongjin.survey.domain.statistics.domain;
 
-import com.woongjin.survey.domain.statistics.domain.statdata.QuestionStatData;
+import com.woongjin.survey.domain.statistics.domain.statresult.QuestionStatResult;
 import com.woongjin.survey.domain.survey.domain.enums.QuestionType;
 import com.woongjin.survey.global.jpa.BaseEntity;
 import jakarta.persistence.*;
@@ -63,7 +63,7 @@ public class QuestionStat extends BaseEntity {
      */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "STAT_DATA", nullable = false, columnDefinition = "JSON")
-    private QuestionStatData statData;
+    private QuestionStatResult statData;
 
     @Column(name = "AGGRGT_DT", nullable = false)
     private LocalDateTime aggregatedAt;
@@ -73,7 +73,7 @@ public class QuestionStat extends BaseEntity {
                          Long questionId,
                          QuestionType questionType,
                          int totalResponseCount,
-                         QuestionStatData statData,
+                         QuestionStatResult statData,
                          LocalDateTime aggregatedAt) {
         this.surveyId           = surveyId;
         this.questionId         = questionId;

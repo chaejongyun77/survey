@@ -1,4 +1,4 @@
-package com.woongjin.survey.domain.statistics.domain.statdata;
+package com.woongjin.survey.domain.statistics.domain.statresult;
 
 import java.util.Map;
 
@@ -21,7 +21,7 @@ import java.util.Map;
  *  - "1순위로 가장 많이 뽑힌 항목" → 각 itemId 의 "1" 값 비교
  *  - "특정 항목의 순위 분포" → rankCounts.get(itemId) 통째로 표시
  */
-public record RankingStatData(
+public record RankingStatResult(
         Map<Long, Map<Integer, Integer>> rankCounts
-) implements QuestionStatData {
+) implements QuestionStatResult {
 }
