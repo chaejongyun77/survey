@@ -54,6 +54,11 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
         }
 
         List<Answer> responses = surveyResponseRepository.findBySurveyId(surveyId);
+        if (responses.isEmpty()) {
+            log.info("[stat-batch] 응답 없음 → 건너뜀 surveyId={}", surveyId);
+            return List.of();
+        }
+
         Map<Long, List<SurveyAnswerDto>> answersByQuestion = groupByQuestionId(responses);
 
         LocalDateTime now = LocalDateTime.now();
