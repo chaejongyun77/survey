@@ -226,18 +226,17 @@
               </div>
             </template>
 
-            <!-- SCALE — 점수별 카드 -->
+            <!-- SCALE — 점수별 카드 (높은 점수부터 표시, 첫 카드 강조) -->
             <template x-if="q.questionType === 'SCALE'">
               <div class="grid gap-2" :style="`grid-template-columns: repeat(${q.items.length}, minmax(0, 1fr))`">
-                <template x-for="(item, i) in q.items" :key="i">
+                <template x-for="(item, i) in [...q.items].reverse()" :key="i">
                   <div class="rounded-lg px-3 py-4 text-center"
                        :class="i === 0 ? 'bg-orange-50' : 'bg-gray-50'">
-                    <p class="text-xs text-gray-500 mb-1" x-text="item.label + '점'"></p>
-                    <p class="text-lg font-bold"
+                    <p class="text-2xl mb-1" x-text="scaleEmoji(i, q.items.length)"></p>
+                    <p class="text-xs text-gray-500 mb-1" x-text="item.label"></p>
+                    <p class="text-base font-bold"
                        :class="i === 0 ? 'text-orange-500' : 'text-gray-900'"
                        x-text="item.percentage + '%'"></p>
-                    <p class="text-xs text-gray-400 mt-0.5"
-                       x-text="item.count.toLocaleString() + '명'"></p>
                   </div>
                 </template>
               </div>
@@ -434,8 +433,11 @@
           case 'SUBJECTIVE':
             return escape(ans.textAnswer);
 
-          case 'SCALE':
-            return escape(labelOf(ans.scaleValue));
+          case 'SCALE': {
+            // scaleValue 는 선택지 정렬 순서 점수(1~N) → 해당 순서의 itemName 표시
+            const opt = question.items[ans.scaleValue - 1];
+            return opt ? escape(opt.itemName) : '<span class="text-gray-300">-</span>';
+          }
 
           case 'RANKING':
             return (ans.rankedItemIds ?? [])
@@ -481,6 +483,20 @@
           SCALE:           '척도',
           RANKING:         '순위선택'
         })[type] ?? type;
+      },
+
+      /**
+       * SCALE 카드 이모지 — 화면은 높은 점수→낮은 점수 순서로 표시되므로
+       *   index 0 = 최고점(매우 만족), index N-1 = 최저점(매우 불만)
+       * 옵션 개수에 관계없이 "긍정 → 부정" 점층으로 매핑
+       */
+      scaleEmoji(index, total) {
+        const positions = ['😀', '🙂', '😐', '🙁', '😢'];
+        if (total <= 1) return positions[0];
+        // index 0 → 0(최고), index N-1 → 4(최저) 로 매핑
+        const ratio = index / (total - 1);
+        const idx = Math.round(ratio * (positions.length - 1));
+        return positions[idx];
       },
 
       /** 집계 시각 — "N분 전 / N시간 전 / YYYY.MM.DD HH:mm" */

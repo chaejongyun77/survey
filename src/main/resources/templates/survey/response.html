@@ -171,7 +171,13 @@ document.addEventListener('alpine:init', () => {
               this.responses.text[a.questionId] = a.textAnswer ?? '';
               break;
             case 'SCALE':
-              if (a.scaleValue != null) this.responses.single[a.questionId] = a.scaleValue;
+              if (a.scaleValue != null) {
+                // 저장된 점수(1~N) → 해당 순서의 itemId 로 복원
+                const question = this.survey.questions.find(q => q.qstId === a.questionId);
+                if (question && question.options[a.scaleValue - 1]) {
+                  this.responses.single[a.questionId] = question.options[a.scaleValue - 1].itemId;
+                }
+              }
               break;
             case 'RANKING': {
               const question = this.survey.questions.find(q => q.qstId === a.questionId);
@@ -431,15 +437,16 @@ document.addEventListener('alpine:init', () => {
             break;
           }
           case 'SCALE': {
-            // SCALE: 선택한 itemId 를 scaleValue 에 그대로 전달 (정수형)
+            // SCALE: 선택지 정렬 순서를 점수로 사용 (1 ~ N)
             const itemId = this.responses.single[q.qstId];
-            if (itemId !== undefined) {
-              acc.push({
-                questionId: q.qstId,
-                type: 'SCALE',
-                scaleValue: itemId,
-              });
-            }
+            if (itemId === undefined) break;
+            const idx = q.options.findIndex(o => o.itemId === itemId);
+            if (idx < 0) break;
+            acc.push({
+              questionId: q.qstId,
+              type: 'SCALE',
+              scaleValue: idx + 1,
+            });
             break;
           }
           case 'RANKING': {

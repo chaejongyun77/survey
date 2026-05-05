@@ -145,7 +145,7 @@ public class StatisticsQueryService {
         if (data instanceof ChoiceStatResult c) {
             items = buildChoiceItems(c, question.getItems(), total);
         } else if (data instanceof ScaleStatResult s) {
-            items = buildScaleItems(s, total);
+            items = buildScaleItems(s, question.getItems(), total);
             average = s.average();
         } else if (data instanceof RankingStatResult r) {
             items = buildRankingItems(r, question.getItems(), total);
@@ -177,15 +177,28 @@ public class StatisticsQueryService {
                 .toList();
     }
 
-    /** 척도형 — 점수 내림차순 (5점 → 1점 순으로 화면 표시 자연스러움) */
-    private List<QuestionStatItemResponse> buildScaleItems(ScaleStatResult data, int total) {
-        return data.valueCounts().entrySet().stream()
-                .sorted(Map.Entry.<Integer, Integer>comparingByKey().reversed())
-                .map(e -> new QuestionStatItemResponse(
-                        String.valueOf(e.getKey()),
-                        e.getValue(),
-                        percentage(e.getValue(), total)))
+    /**
+     * 척도형 — 선택지(options) 정렬 순서를 그대로 사용.
+     *  - 응답이 0인 옵션도 0% 카드로 표시되도록 options 기준 순회
+     *  - scaleValue 는 1..N 점수이며 options[scaleValue - 1] 와 매핑
+     *  - label 은 옵션 텍스트 ("매우 만족" 등)
+     */
+    private List<QuestionStatItemResponse> buildScaleItems(
+            ScaleStatResult data, List<QuestionItem> options, int total) {
+        List<QuestionItem> active = options.stream()
+                .filter(opt -> opt.getDeletedAt() == null)
                 .toList();
+
+        List<QuestionStatItemResponse> result = new ArrayList<>(active.size());
+        for (int i = 0; i < active.size(); i++) {
+            int score = i + 1;
+            int count = data.valueCounts().getOrDefault(score, 0);
+            result.add(new QuestionStatItemResponse(
+                    active.get(i).getItemName(),
+                    count,
+                    percentage(count, total)));
+        }
+        return result;
     }
 
     /** 순위형 — 1순위 카운트만 추출하여 단순 막대로 표시 */
