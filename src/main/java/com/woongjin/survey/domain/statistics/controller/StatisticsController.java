@@ -1,6 +1,7 @@
 package com.woongjin.survey.domain.statistics.controller;
 
 import com.woongjin.survey.domain.statistics.dto.DeptResponseRateResponse;
+import com.woongjin.survey.domain.statistics.dto.QuestionStatisticsListResponse;
 import com.woongjin.survey.domain.statistics.dto.ResponseListResponse;
 import com.woongjin.survey.domain.statistics.dto.StatisticsSummaryResponse;
 import com.woongjin.survey.domain.statistics.service.StatisticsQueryService;
@@ -59,6 +60,19 @@ public class StatisticsController {
         return ApiResponse.success(
                 "응답자별 문항답변 조회 성공",
                 statisticsQueryService.getResponseList(surveyId)
+        );
+    }
+
+    /**
+     * 문항별 응답현황 — "문항별 응답현황" 탭
+     * - 배치가 집계한 통계 + 문항/선택지 텍스트를 합쳐 화면용 형태로 반환
+     * - 배치가 아직 안 돌았으면 questions = []
+     */
+    @GetMapping("/questions")
+    public ApiResponse<QuestionStatisticsListResponse> getQuestionStatistics(@PathVariable Long surveyId) {
+        return ApiResponse.success(
+                "문항별 응답현황 조회 성공",
+                statisticsQueryService.getQuestionStatistics(surveyId)
         );
     }
 }

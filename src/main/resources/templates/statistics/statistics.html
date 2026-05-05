@@ -160,9 +160,100 @@
       </p>
     </section>
 
-    <!-- [탭2], [탭3] 자리 — 추후 확장 -->
-    <section x-show="ui.tab === 'questions'" class="bg-white border border-gray-100 rounded-xl p-10 text-center text-gray-400 text-sm">
-      문항별 응답현황 — 준비중
+    <!-- ─────────── [탭2] 문항별 응답현황 ─────────── -->
+    <section x-show="ui.tab === 'questions'">
+
+      <div class="flex items-center justify-between mb-4 px-1">
+        <h2 class="text-base font-semibold text-gray-900">문항별 응답현황</h2>
+        <p class="text-xs text-gray-400" x-show="aggregatedAt">
+          최종 집계: <span x-text="formatAggregatedAt(aggregatedAt)"></span>
+        </p>
+      </div>
+
+      <!-- 로딩 -->
+      <div x-show="ui.questionsLoading" class="bg-white border border-gray-100 rounded-xl p-10 text-center text-gray-400 text-sm">
+        불러오는 중…
+      </div>
+
+      <!-- 빈 상태 (배치 미실행 또는 응답 없음) -->
+      <div x-show="!ui.questionsLoading && questionStats.length === 0"
+           class="bg-white border border-gray-100 rounded-xl p-10 text-center text-gray-400 text-sm">
+        아직 집계된 데이터가 없습니다.
+      </div>
+
+      <!-- 문항 카드 리스트 -->
+      <div x-show="!ui.questionsLoading && questionStats.length > 0" class="space-y-4">
+        <template x-for="(q, idx) in questionStats" :key="q.questionId">
+          <div class="bg-white border border-gray-100 rounded-xl p-5">
+
+            <!-- 카드 헤더 -->
+            <div class="flex items-center gap-2 mb-2">
+              <span class="px-2 py-0.5 bg-orange-50 text-orange-500 text-xs font-medium rounded">
+                문항 <span x-text="idx + 1"></span>
+              </span>
+            </div>
+            <h3 class="text-base font-semibold text-gray-900 mb-1" x-text="q.title"></h3>
+            <p class="text-xs text-gray-400 mb-4">
+              <span x-text="questionTypeLabel(q.questionType)"></span>
+              <span class="text-gray-300 mx-1.5">·</span>
+              응답 <span x-text="q.totalResponseCount.toLocaleString()"></span>명
+              <template x-if="q.average !== null && q.average !== undefined">
+                <span>
+                  <span class="text-gray-300 mx-1.5">·</span>
+                  평균 <span class="text-gray-700 font-medium" x-text="q.average + '점'"></span>
+                </span>
+              </template>
+            </p>
+
+            <!-- SINGLE_CHOICE / MULTIPLE_CHOICE / RANKING — 가로 막대 -->
+            <template x-if="['SINGLE_CHOICE', 'MULTIPLE_CHOICE', 'RANKING'].includes(q.questionType)">
+              <div class="space-y-2.5">
+                <template x-for="(item, i) in q.items" :key="i">
+                  <div class="grid grid-cols-12 gap-3 items-center">
+                    <div class="col-span-3 text-sm text-gray-700" x-text="item.label"></div>
+                    <div class="col-span-7">
+                      <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full bg-orange-400 progress-bar"
+                             :style="`width: ${item.percentage}%`"></div>
+                      </div>
+                    </div>
+                    <div class="col-span-1 text-right text-sm text-gray-700"
+                         x-text="item.count.toLocaleString() + '명'"></div>
+                    <div class="col-span-1 text-right text-xs text-gray-400"
+                         x-text="item.percentage + '%'"></div>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <!-- SCALE — 점수별 카드 -->
+            <template x-if="q.questionType === 'SCALE'">
+              <div class="grid gap-2" :style="`grid-template-columns: repeat(${q.items.length}, minmax(0, 1fr))`">
+                <template x-for="(item, i) in q.items" :key="i">
+                  <div class="rounded-lg px-3 py-4 text-center"
+                       :class="i === 0 ? 'bg-orange-50' : 'bg-gray-50'">
+                    <p class="text-xs text-gray-500 mb-1" x-text="item.label + '점'"></p>
+                    <p class="text-lg font-bold"
+                       :class="i === 0 ? 'text-orange-500' : 'text-gray-900'"
+                       x-text="item.percentage + '%'"></p>
+                    <p class="text-xs text-gray-400 mt-0.5"
+                       x-text="item.count.toLocaleString() + '명'"></p>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <!-- SUBJECTIVE — 응답 수만 -->
+            <template x-if="q.questionType === 'SUBJECTIVE'">
+              <div class="bg-gray-50 rounded-lg px-4 py-3 text-sm text-gray-500">
+                응답 <span class="text-gray-700 font-medium"
+                          x-text="q.totalResponseCount.toLocaleString() + '건'"></span>
+              </div>
+            </template>
+
+          </div>
+        </template>
+      </div>
     </section>
     <!-- ─────────── [탭3] 응답자별 문항답변 ─────────── -->
     <section x-show="ui.tab === 'respondents'" class="bg-white border border-gray-100 rounded-xl p-5">
@@ -229,7 +320,9 @@
         tab: 'overview',
         isLoading: true,
         respondentsLoading: false,
-        respondentsLoaded: false
+        respondentsLoaded: false,
+        questionsLoading: false,
+        questionsLoaded: false
       },
       summary: {
         title: '', site: '', beginDate: '', endDate: '',
@@ -242,6 +335,8 @@
       responses: [],
       responseTotal: 0,
       previewLimit: 50,
+      questionStats: [],
+      aggregatedAt: null,
 
       async init() {
         try {
@@ -261,12 +356,15 @@
       },
 
       /**
-       * 탭 전환 — 응답자별 문항답변 탭은 진입 시 lazy load
+       * 탭 전환 — 응답자별 / 문항별 탭은 진입 시 lazy load
        */
       selectTab(tab) {
         this.ui.tab = tab;
         if (tab === 'respondents' && !this.ui.respondentsLoaded) {
           this.loadRespondents();
+        }
+        if (tab === 'questions' && !this.ui.questionsLoaded) {
+          this.loadQuestionStatistics();
         }
       },
 
@@ -286,6 +384,23 @@
           alert('응답자별 문항답변을 불러오지 못했습니다.');
         } finally {
           this.ui.respondentsLoading = false;
+        }
+      },
+
+      /** 문항별 응답현황 조회 (배치 집계 결과) */
+      async loadQuestionStatistics() {
+        this.ui.questionsLoading = true;
+        try {
+          const res = await axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/questions`);
+          const data = res.data.data;
+          this.questionStats = data.questions;
+          this.aggregatedAt = data.aggregatedAt;
+          this.ui.questionsLoaded = true;
+        } catch (e) {
+          console.error('[statistics] 문항별 응답현황 조회 실패:', e);
+          alert('문항별 응답현황을 불러오지 못했습니다.');
+        } finally {
+          this.ui.questionsLoading = false;
         }
       },
 
@@ -355,6 +470,31 @@
             ? `${pad(e.getDate())}`
             : `${e.getFullYear()}.${pad(e.getMonth() + 1)}.${pad(e.getDate())}`;
         return `${left} ~ ${right}`;
+      },
+
+      /** 문항 타입 한글 라벨 */
+      questionTypeLabel(type) {
+        return ({
+          SINGLE_CHOICE:   '단일선택',
+          MULTIPLE_CHOICE: '복수선택',
+          SUBJECTIVE:      '주관식',
+          SCALE:           '척도',
+          RANKING:         '순위선택'
+        })[type] ?? type;
+      },
+
+      /** 집계 시각 — "N분 전 / N시간 전 / YYYY.MM.DD HH:mm" */
+      formatAggregatedAt(iso) {
+        if (!iso) return '';
+        const t = new Date(iso);
+        const diffMin = Math.floor((Date.now() - t.getTime()) / 60000);
+        if (diffMin < 1)  return '방금 전';
+        if (diffMin < 60) return `${diffMin}분 전`;
+        const diffHr = Math.floor(diffMin / 60);
+        if (diffHr < 24)  return `${diffHr}시간 전`;
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${t.getFullYear()}.${pad(t.getMonth() + 1)}.${pad(t.getDate())} `
+             + `${pad(t.getHours())}:${pad(t.getMinutes())}`;
       }
     }
   }

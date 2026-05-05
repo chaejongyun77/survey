@@ -1,13 +1,26 @@
 package com.woongjin.survey.domain.statistics.service;
 
+import com.woongjin.survey.domain.statistics.domain.QuestionStat;
+import com.woongjin.survey.domain.statistics.domain.statresult.ChoiceStatResult;
+import com.woongjin.survey.domain.statistics.domain.statresult.QuestionStatResult;
+import com.woongjin.survey.domain.statistics.domain.statresult.RankingStatResult;
+import com.woongjin.survey.domain.statistics.domain.statresult.ScaleStatResult;
+import com.woongjin.survey.domain.statistics.domain.statresult.SubjectiveStatResult;
 import com.woongjin.survey.domain.statistics.dto.DeptResponseRateResponse;
 import com.woongjin.survey.domain.statistics.dto.QuestionMetaDto;
+import com.woongjin.survey.domain.statistics.dto.QuestionStatItemResponse;
+import com.woongjin.survey.domain.statistics.dto.QuestionStatisticsListResponse;
+import com.woongjin.survey.domain.statistics.dto.QuestionStatisticsResponse;
 import com.woongjin.survey.domain.statistics.dto.RespondentAnswerDto;
 import com.woongjin.survey.domain.statistics.dto.ResponseListResponse;
 import com.woongjin.survey.domain.statistics.dto.StatisticsSummaryResponse;
 import com.woongjin.survey.domain.statistics.dto.projection.SurveySummaryProjection;
+import com.woongjin.survey.domain.statistics.repository.QuestionStatRepository;
 import com.woongjin.survey.domain.statistics.repository.StatisticsRepository;
+import com.woongjin.survey.domain.survey.domain.Question;
+import com.woongjin.survey.domain.survey.domain.QuestionItem;
 import com.woongjin.survey.domain.survey.domain.Survey;
+import com.woongjin.survey.domain.survey.repository.SurveyQuestionRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyRepository;
 import com.woongjin.survey.global.exception.BusinessException;
 import com.woongjin.survey.global.exception.ErrorCode;
@@ -17,8 +30,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -29,6 +45,8 @@ public class StatisticsQueryService {
 
     private final StatisticsRepository statisticsRepository;
     private final SurveyRepository surveyRepository;
+    private final QuestionStatRepository questionStatRepository;
+    private final SurveyQuestionRepository surveyQuestionRepository;
 
     @Transactional(readOnly = true)
     public StatisticsSummaryResponse getSummary(Long surveyId) {
@@ -74,4 +92,119 @@ public class StatisticsQueryService {
 
         return new ResponseListResponse(questions, responses, totalCount, RESPONSE_PREVIEW_LIMIT);
     }
+
+    /**
+     * 문항별 응답현황 조회 — 통계 페이지 두 번째 탭.
+     *
+     * [흐름]
+     *  1) 통계 테이블에서 집계 raw 데이터 조회 (문항별 1행)
+     *  2) 문항/선택지 텍스트 조회 (정렬 순서대로)
+     *  3) 두 결과를 questionId 로 매칭하여 화면용 DTO 빌드
+     *
+     * [반환]
+     *  - 배치가 안 돌았으면 questions = 빈 리스트, aggregatedAt = null
+     *  - 배치 돌았으면 문항 정렬 순서대로 통계 반환 + 마지막 집계 시각
+     */
+    @Transactional(readOnly = true)
+    public QuestionStatisticsListResponse getQuestionStatistics(Long surveyId) {
+
+        if (!surveyRepository.existsById(surveyId)) {
+            throw new BusinessException(ErrorCode.SURVEY_NOT_FOUND);
+        }
+
+        List<QuestionStat> stats = questionStatRepository.findBySurveyId(surveyId);
+        if (stats.isEmpty()) {
+            return new QuestionStatisticsListResponse(null, List.of());
+        }
+
+        // 문항 메타 + 선택지 텍스트 (sortOrder 정렬)
+        List<Question> questions = surveyQuestionRepository
+                .findBySurveyIdAndDeletedAtIsNullOrderBySortOrderAsc(surveyId);
+
+        Map<Long, QuestionStat> statByQuestionId = stats.stream()
+                .collect(Collectors.toMap(QuestionStat::getQuestionId, s -> s));
+
+        List<QuestionStatisticsResponse> result = new ArrayList<>(questions.size());
+        for (Question q : questions) {
+            QuestionStat stat = statByQuestionId.get(q.getId());
+            if (stat == null) continue;     // 통계가 아직 없는 문항은 스킵
+            result.add(toResponse(q, stat));
+        }
+
+        return new QuestionStatisticsListResponse(stats.get(0).getAggregatedAt(), result);
+    }
+
+    /** 문항 1개 + 통계 1개 → 화면용 DTO */
+    private QuestionStatisticsResponse toResponse(Question question, QuestionStat stat) {
+        QuestionStatResult data = stat.getStatData();
+        int total = stat.getTotalResponseCount();
+
+        List<QuestionStatItemResponse> items;
+        Double average = null;
+
+        if (data instanceof ChoiceStatResult c) {
+            items = buildChoiceItems(c, question.getItems(), total);
+        } else if (data instanceof ScaleStatResult s) {
+            items = buildScaleItems(s, total);
+            average = s.average();
+        } else if (data instanceof RankingStatResult r) {
+            items = buildRankingItems(r, question.getItems(), total);
+        } else if (data instanceof SubjectiveStatResult) {
+            items = List.of();              // 주관식은 items 비움
+        } else {
+            throw new IllegalStateException("Unknown stat result: " + data.getClass());
+        }
+
+        return new QuestionStatisticsResponse(
+                question.getId(),
+                question.getQuestionType(),
+                question.getQuestionName(),
+                total,
+                items,
+                average
+        );
+    }
+
+    /** 선택형 — 선택지 텍스트 정렬 순서로, count 와 percentage 포함 */
+    private List<QuestionStatItemResponse> buildChoiceItems(
+            ChoiceStatResult data, List<QuestionItem> options, int total) {
+        return options.stream()
+                .filter(opt -> opt.getDeletedAt() == null)
+                .map(opt -> {
+                    int count = data.itemCounts().getOrDefault(opt.getId(), 0);
+                    return new QuestionStatItemResponse(opt.getItemName(), count, percentage(count, total));
+                })
+                .toList();
+    }
+
+    /** 척도형 — 점수 내림차순 (5점 → 1점 순으로 화면 표시 자연스러움) */
+    private List<QuestionStatItemResponse> buildScaleItems(ScaleStatResult data, int total) {
+        return data.valueCounts().entrySet().stream()
+                .sorted(Map.Entry.<Integer, Integer>comparingByKey().reversed())
+                .map(e -> new QuestionStatItemResponse(
+                        String.valueOf(e.getKey()),
+                        e.getValue(),
+                        percentage(e.getValue(), total)))
+                .toList();
+    }
+
+    /** 순위형 — 1순위 카운트만 추출하여 단순 막대로 표시 */
+    private List<QuestionStatItemResponse> buildRankingItems(
+            RankingStatResult data, List<QuestionItem> options, int total) {
+        return options.stream()
+                .filter(opt -> opt.getDeletedAt() == null)
+                .map(opt -> {
+                    Map<Integer, Integer> ranks = data.rankCounts().getOrDefault(opt.getId(), Map.of());
+                    int firstPlaceCount = ranks.getOrDefault(1, 0);
+                    return new QuestionStatItemResponse(
+                            opt.getItemName(), firstPlaceCount, percentage(firstPlaceCount, total));
+                })
+                .toList();
+    }
+
+    private double percentage(int count, int total) {
+        if (total == 0) return 0.0;
+        return Math.round((double) count / total * 1000) / 10.0;   // 소수 1자리
+    }
 }
+
