@@ -139,21 +139,16 @@ public class StatisticsQueryService {
         QuestionStatResult data = stat.getStatData();
         int total = stat.getTotalResponseCount();
 
-        List<QuestionStatItemResponse> items;
         Double average = null;
-
-        if (data instanceof ChoiceStatResult c) {
-            items = buildChoiceItems(c, question.getItems(), total);
-        } else if (data instanceof ScaleStatResult s) {
-            items = buildScaleItems(s, question.getItems(), total);
-            average = s.average();
-        } else if (data instanceof RankingStatResult r) {
-            items = buildRankingItems(r, question.getItems(), total);
-        } else if (data instanceof SubjectiveStatResult) {
-            items = List.of();              // 주관식은 items 비움
-        } else {
-            throw new IllegalStateException("Unknown stat result: " + data.getClass());
-        }
+        List<QuestionStatItemResponse> items = switch (data) {
+            case ChoiceStatResult c    -> buildChoiceItems(c, question.getItems(), total);
+            case ScaleStatResult s     -> {
+                average = s.average();
+                yield buildScaleItems(s, question.getItems(), total);
+            }
+            case RankingStatResult r   -> buildRankingItems(r, question.getItems(), total);
+            case SubjectiveStatResult ignored -> List.of();
+        };
 
         return new QuestionStatisticsResponse(
                 question.getId(),

@@ -23,5 +23,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
         @JsonSubTypes.Type(value = SubjectiveStatResult.class, name = "SUBJECTIVE"),
         @JsonSubTypes.Type(value = RankingStatResult.class,    name = "RANKING")
 })
-public interface QuestionStatResult {
+public sealed interface QuestionStatResult
+        permits ChoiceStatResult, ScaleStatResult, RankingStatResult, SubjectiveStatResult {
 }
