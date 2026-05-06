@@ -82,7 +82,8 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
         };
     }
 
-    /** 선택형: itemId 별 선택 횟수 카운트. MULTIPLE 의 경우 한 응답자가 여러 itemId 가질 수 있음. */
+    // 항목별 선택 횟수 카운트
+    // 예) [{selected:[1,2]}, {selected:[1]}] → {1:2, 2:1}
     private ChoiceStatResult aggregateChoice(List<SurveyAnswerDto> answers) {
         Map<Long, Integer> itemCounts = new HashMap<>();
         for (SurveyAnswerDto a : answers) {
@@ -95,7 +96,8 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
         return new ChoiceStatResult(itemCounts);
     }
 
-    /** 척도형: 점수별 카운트 + 평균(소수 둘째자리). */
+    // 점수별 카운트 + 평균(소수 둘째 자리)
+    // 예) [3, 5, 4] → {3:1, 4:1, 5:1}, avg=4.0
     private ScaleStatResult aggregateScale(List<SurveyAnswerDto> answers) {
         Map<Integer, Integer> valueCounts = new HashMap<>();
         long sum = 0;
@@ -115,7 +117,8 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
         return new ScaleStatResult(valueCounts, average);
     }
 
-    /** 주관식: 비어있지 않은 응답 수만 집계. 텍스트는 통계에 저장하지 않음. */
+    // 비어있지 않은 응답 수만 집계 (텍스트 내용은 저장하지 않음)
+    // 예) ["좋아요", "", "보통"] → answered=2
     private SubjectiveStatResult aggregateSubjective(List<SurveyAnswerDto> answers) {
         int answered = 0;
         for (SurveyAnswerDto a : answers) {
@@ -127,7 +130,8 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
         return new SubjectiveStatResult(answered);
     }
 
-    /** 순위형: itemId → (순위 → 카운트) 이중 맵. 배열 index 0 이 1순위. */
+    // 항목별 순위별 카운트 (배열 index 0 = 1순위)
+    // 예) [{ranked:[A,B]}, {ranked:[B,A]}] → {A:{1위:1,2위:1}, B:{1위:1,2위:1}}
     private RankingStatResult aggregateRanking(List<SurveyAnswerDto> answers) {
         Map<Long, Map<Integer, Integer>> rankCounts = new HashMap<>();
         for (SurveyAnswerDto a : answers) {
