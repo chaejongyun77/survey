@@ -59,4 +59,10 @@ public interface StatisticsRepository {
      * - 정렬: 문항 sortOrder ASC
      */
     List<QuestionMetaDto> findQuestionsWithItems(Long surveyId);
+
+    /**
+     * 주관식 문항 텍스트 답변 on-demand 조회 — 토글 클릭 시 호출
+     * surveyId 기준으로 Answer 로드 후 questionId + 비어있지 않은 텍스트만 필터링
+     */
+    List<String> findSubjectiveTexts(Long surveyId, Long questionId, int limit);
 }
