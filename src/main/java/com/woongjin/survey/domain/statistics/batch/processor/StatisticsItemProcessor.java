@@ -117,17 +117,19 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
         return new ScaleStatResult(valueCounts, average);
     }
 
-    // 비어있지 않은 응답 수만 집계 (텍스트 내용은 저장하지 않음)
-    // 예) ["좋아요", "", "보통"] → answered=2
+    // 비어있지 않은 응답 수 집계 + 텍스트 최대 30건 수집
+    // 예) ["좋아요", "", "보통"] → answered=2, sampleTexts=["좋아요","보통"]
     private SubjectiveStatResult aggregateSubjective(List<SurveyAnswerDto> answers) {
-        int answered = 0;
+        int answeredCount = 0;
+        List<String> sampleTexts = new ArrayList<>();
         for (SurveyAnswerDto a : answers) {
             String text = a.getTextAnswer();
             if (text != null && !text.isBlank()) {
-                answered++;
+                answeredCount++;
+                if (sampleTexts.size() < 30) sampleTexts.add(text);
             }
         }
-        return new SubjectiveStatResult(answered);
+        return new SubjectiveStatResult(answeredCount, sampleTexts);
     }
 
     // 항목별 순위별 카운트 (배열 index 0 = 1순위)

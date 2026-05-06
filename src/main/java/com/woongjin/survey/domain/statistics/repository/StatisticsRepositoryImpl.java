@@ -10,14 +10,12 @@ import com.woongjin.survey.domain.statistics.dto.QuestionMetaDto;
 import com.woongjin.survey.domain.statistics.dto.RespondentAnswerDto;
 import com.woongjin.survey.domain.statistics.dto.projection.DeptResponseRateProjection;
 import com.woongjin.survey.domain.statistics.dto.projection.SurveySummaryProjection;
-import com.woongjin.survey.domain.survey.domain.Answer;
 import com.woongjin.survey.domain.survey.domain.QAnswer;
 import com.woongjin.survey.domain.survey.domain.QQuestion;
 import com.woongjin.survey.domain.survey.domain.QQuestionItem;
 import com.woongjin.survey.domain.survey.domain.QSurvey;
 import com.woongjin.survey.domain.survey.domain.QSurveyTargetPerson;
 import com.woongjin.survey.domain.survey.domain.Question;
-import com.woongjin.survey.domain.survey.dto.submit.SurveyAnswerDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -181,29 +179,6 @@ public class StatisticsRepositoryImpl implements StatisticsRepository {
 
         return result.stream()
                 .map(this::toQuestionMetaDto)
-                .toList();
-    }
-
-    @Override
-    public List<String> findSubjectiveTexts(Long surveyId, Long questionId, int limit) {
-
-        QAnswer a = QAnswer.answer;
-
-        // QueryDSL로 설문 응답 전체 조회 — JSON 내부는 DB 레벨 필터 불가
-        List<Answer> responses = queryFactory
-                .selectFrom(a)
-                .where(a.surveyId.eq(surveyId))
-                .fetch();
-
-        // 메모리에서 questionId 매칭 + 비어있지 않은 텍스트 추출
-        return responses.stream()
-                .filter(r -> r.getAnswers() != null)
-                .flatMap(r -> r.getAnswers().stream())
-                .filter(dto -> questionId.equals(dto.getQuestionId())
-                             && dto.getTextAnswer() != null
-                             && !dto.getTextAnswer().isBlank())
-                .map(SurveyAnswerDto::getTextAnswer)
-                .limit(limit)
                 .toList();
     }
 
