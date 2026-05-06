@@ -139,23 +139,20 @@ public class StatisticsQueryService {
         QuestionStatResult data = stat.getStatData();
         int total = stat.getTotalResponseCount();
 
-        List<QuestionStatItemResponse> items;
         Double average = null;
         List<String> sampleTexts = null;
-
-        if (data instanceof ChoiceStatResult c) {
-            items = buildChoiceItems(c, question.getItems(), total);
-        } else if (data instanceof ScaleStatResult s) {
-            items = buildScaleItems(s, question.getItems(), total);
-            average = s.average();
-        } else if (data instanceof RankingStatResult r) {
-            items = buildRankingItems(r, question.getItems(), total);
-        } else if (data instanceof SubjectiveStatResult sub) {
-            items = List.of();
-            sampleTexts = sub.sampleTexts();
-        } else {
-            throw new IllegalStateException("Unknown stat result: " + data.getClass());
-        }
+        List<QuestionStatItemResponse> items = switch (data) {
+            case ChoiceStatResult c    -> buildChoiceItems(c, question.getItems(), total);
+            case ScaleStatResult s     -> {
+                average = s.average();
+                yield buildScaleItems(s, question.getItems(), total);
+            }
+            case RankingStatResult r   -> buildRankingItems(r, question.getItems(), total);
+            case SubjectiveStatResult sub -> {
+                sampleTexts = sub.sampleTexts();
+                yield List.of();
+            }
+        };
 
         return new QuestionStatisticsResponse(
                 question.getId(),
