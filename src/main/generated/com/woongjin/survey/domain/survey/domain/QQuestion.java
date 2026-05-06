@@ -4,6 +4,8 @@ import static com.querydsl.core.types.PathMetadataFactory.*;
 
 import com.querydsl.core.types.dsl.*;
 
+import com.querydsl.core.types.dsl.StringTemplate;
+
 import com.querydsl.core.types.PathMetadata;
 import javax.annotation.processing.Generated;
 import com.querydsl.core.types.Path;
@@ -17,13 +19,11 @@ import com.querydsl.core.types.dsl.PathInits;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QQuestion extends EntityPathBase<Question> {
 
-    private static final long serialVersionUID = 482910375L;
+    private static final long serialVersionUID = -1737959788L;
 
     public static final QQuestion question = new QQuestion("question");
 
     public final com.woongjin.survey.global.jpa.QBaseEntity _super = new com.woongjin.survey.global.jpa.QBaseEntity(this);
-
-    public final NumberPath<Long> childQuestionId = createNumber("childQuestionId", Long.class);
 
     //inherited
     public final NumberPath<Long> createdBy = _super.createdBy;
@@ -35,7 +35,7 @@ public class QQuestion extends EntityPathBase<Question> {
 
     public final NumberPath<Long> id = createNumber("id", Long.class);
 
-    public final ListPath<QuestionItem, QQuestionItem> items = createList("items", QuestionItem.class, QQuestionItem.class, PathInits.DIRECT2);
+    public final ListPath<QuestionItem, QQuestionItem> items = this.<QuestionItem, QQuestionItem>createList("items", QuestionItem.class, QQuestionItem.class, PathInits.DIRECT2);
 
     //inherited
     public final NumberPath<Long> lastModifiedBy = _super.lastModifiedBy;
@@ -43,12 +43,9 @@ public class QQuestion extends EntityPathBase<Question> {
     //inherited
     public final DateTimePath<java.time.LocalDateTime> lastModifiedDate = _super.lastModifiedDate;
 
-    public final NumberPath<Long> parentItemId = createNumber("parentItemId", Long.class);
-
     public final StringPath questionName = createString("questionName");
 
-    public final EnumPath<com.woongjin.survey.domain.survey.domain.enums.QuestionType> questionType =
-            createEnum("questionType", com.woongjin.survey.domain.survey.domain.enums.QuestionType.class);
+    public final EnumPath<com.woongjin.survey.domain.survey.domain.enums.QuestionType> questionType = createEnum("questionType", com.woongjin.survey.domain.survey.domain.enums.QuestionType.class);
 
     public final BooleanPath required = createBoolean("required");
 
@@ -69,3 +66,4 @@ public class QQuestion extends EntityPathBase<Question> {
     }
 
 }
+

@@ -1,6 +1,7 @@
 package com.woongjin.survey.domain.survey.service;
 
 import com.woongjin.survey.domain.survey.domain.Question;
+import com.woongjin.survey.domain.survey.domain.QuestionBranch;
 import com.woongjin.survey.domain.survey.domain.QuestionItem;
 import com.woongjin.survey.domain.survey.dto.submit.SurveyAnswerDto;
 import com.woongjin.survey.global.exception.BusinessException;
@@ -38,10 +39,12 @@ public class SurveyAnswerValidator {
      * 설문 답변 전체 검증 (진입점)
      *
      * @param questions 해당 설문의 전체 문항 목록 (옵션 포함)
+     * @param branches  해당 설문의 분기 정보 (없으면 빈 리스트)
      * @param answers   제출된 답변 목록
      * @param strict    true = 필수 문항 누락 체크 (최종 제출), false = skip (임시저장)
      */
-    public void validate(List<Question> questions, List<SurveyAnswerDto> answers, boolean strict) {
+    public void validate(List<Question> questions, List<QuestionBranch> branches,
+                         List<SurveyAnswerDto> answers, boolean strict) {
 
         // 빠른 조회를 위한 맵 구성 (questionId → 문항/답변)
         Map<Long, Question> questionById = questions.stream()
@@ -54,7 +57,7 @@ public class SurveyAnswerValidator {
         validateQuestionIds(answerByQuestionId.keySet(), questionById.keySet());
 
         // 2) 조건분기 활성화 기반 "응답해야 할 문항" 계산
-        Set<Long> activeQuestionIds = calculateActiveQuestions(questions, answerByQuestionId);
+        Set<Long> activeQuestionIds = calculateActiveQuestions(questions, branches, answerByQuestionId);
 
         // 3) 필수 문항 누락 검증 (strict 모드에서만)
         if (strict) {
@@ -92,8 +95,8 @@ public class SurveyAnswerValidator {
     // 2) 조건분기 활성 문항 계산
     //
     // 규칙:
-    //  - 분기 없는 문항(parentItemId == null) : 항상 활성
-    //  - 분기 있는 문항(parentItemId != null) : 부모 답변이 parentItemId 를 선택했을 때만 활성
+    //  - 분기 자식이 아닌 문항 : 항상 활성
+    //  - 분기 자식인 문항      : 부모 답변이 분기 정의의 parentItemId 를 선택했을 때만 활성
     // ─────────────────────────────────────────────────────────────
 
     /**
@@ -101,38 +104,37 @@ public class SurveyAnswerValidator {
      * 이 집합은 필수 문항 누락 검증에서 사용된다.
      *
      * @param questions          전체 문항 목록
+     * @param branches           분기 정의 목록
      * @param answerByQuestionId questionId → 답변 맵
      * @return 활성 상태인 questionId 집합
      */
     private Set<Long> calculateActiveQuestions(List<Question> questions,
+                                               List<QuestionBranch> branches,
                                                Map<Long, SurveyAnswerDto> answerByQuestionId) {
-        // 역방향 인덱스: 자식 questionId → 부모 문항 (O(N)에 한 번만 구축)
-        // 이후 분기 문항마다 O(1) 조회 → 전체 O(N)
-        Map<Long, Question> parentQuestionByChildId = questions.stream()
-                .filter(question -> question.getChildQuestionId() != null)
+        // 자식 questionId → 분기 정의 (1:1 가정)
+        Map<Long, QuestionBranch> branchByChildId = branches.stream()
                 .collect(Collectors.toMap(
-                        Question::getChildQuestionId,
-                        question -> question
+                        QuestionBranch::getChildQuestionId,
+                        branch -> branch
                 ));
 
         Set<Long> activeQuestionIds = new HashSet<>();
 
         for (Question question : questions) {
-            // 분기 없는 문항은 항상 활성
-            if (question.getParentItemId() == null) {
+            QuestionBranch branch = branchByChildId.get(question.getId());
+
+            // 분기 자식이 아닌 문항은 항상 활성
+            if (branch == null) {
                 activeQuestionIds.add(question.getId());
                 continue;
             }
 
-            // 분기 문항은 부모 답변을 확인하여 활성 여부 결정
-            Question parentQuestion = parentQuestionByChildId.get(question.getId());
-            if (parentQuestion == null) continue;
-
-            SurveyAnswerDto parentAnswer = answerByQuestionId.get(parentQuestion.getId());
+            // 분기 자식 문항은 부모 답변을 확인하여 활성 여부 결정
+            SurveyAnswerDto parentAnswer = answerByQuestionId.get(branch.getParentQuestionId());
             if (parentAnswer == null || parentAnswer.getSelectedItemIds() == null) continue;
 
-            // 부모 답변에 이 문항의 parentItemId 가 포함되어 있으면 활성
-            if (parentAnswer.getSelectedItemIds().contains(question.getParentItemId())) {
+            // 부모 답변에 분기 정의의 parentItemId 가 포함되어 있으면 활성
+            if (parentAnswer.getSelectedItemIds().contains(branch.getParentItemId())) {
                 activeQuestionIds.add(question.getId());
             }
         }

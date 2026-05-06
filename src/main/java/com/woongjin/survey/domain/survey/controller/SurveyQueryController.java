@@ -1,7 +1,7 @@
 package com.woongjin.survey.domain.survey.controller;
 
-import com.woongjin.survey.domain.survey.dto.QuestionDto;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
+import com.woongjin.survey.domain.survey.dto.SurveyQuestionsResponse;
 import com.woongjin.survey.domain.survey.dto.submit.SurveyAnswerDto;
 import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
 import com.woongjin.survey.domain.survey.service.SurveyCommandService;
@@ -36,7 +36,7 @@ public class SurveyQueryController {
     }
 
     @GetMapping("/{surveyId}/questions")
-    public ApiResponse<List<QuestionDto>> getQuestions(@PathVariable Long surveyId) {
+    public ApiResponse<SurveyQuestionsResponse> getQuestions(@PathVariable Long surveyId) {
         return ApiResponse.success("문항 조회 성공", surveyQueryService.getQuestions(surveyId));
     }
 

@@ -46,20 +46,6 @@ public class Question extends BaseEntity {
     @Column(name = "ESNTL_RSPN_YN", nullable = false)
     private Boolean required;
 
-    /**
-     * 조건분기 — 이 문항을 활성화시키는 부모 항목 ID
-     * 분기 없음: null
-     */
-    @Column(name = "PRNTS_ITM_ID")
-    private Long parentItemId;
-
-    /**
-     * 조건분기 — 이 문항 선택 시 활성화될 자식 문항 ID
-     * 분기 없음: null
-     */
-    @Column(name = "CHLRN_QST_ID")
-    private Long childQuestionId;
-
     /** 정렬 순서 */
     @Column(name = "SORT_ODR", nullable = false)
     private Integer sortOrder;

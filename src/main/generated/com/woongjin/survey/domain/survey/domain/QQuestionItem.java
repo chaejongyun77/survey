@@ -4,6 +4,8 @@ import static com.querydsl.core.types.PathMetadataFactory.*;
 
 import com.querydsl.core.types.dsl.*;
 
+import com.querydsl.core.types.dsl.StringTemplate;
+
 import com.querydsl.core.types.PathMetadata;
 import javax.annotation.processing.Generated;
 import com.querydsl.core.types.Path;
@@ -17,7 +19,7 @@ import com.querydsl.core.types.dsl.PathInits;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QQuestionItem extends EntityPathBase<QuestionItem> {
 
-    private static final long serialVersionUID = 1293847562L;
+    private static final long serialVersionUID = -195667001L;
 
     private static final PathInits INITS = PathInits.DIRECT2;
 
@@ -69,3 +71,4 @@ public class QQuestionItem extends EntityPathBase<QuestionItem> {
     }
 
 }
+

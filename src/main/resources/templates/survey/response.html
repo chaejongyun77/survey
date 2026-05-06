@@ -91,6 +91,7 @@ document.addEventListener('alpine:init', () => {
       description: '',
       endDate:     '',
       questions:   [],   // QuestionDto[] — API 응답 원본
+      branches:    [],   // BranchDto[]   — { parentQstId, parentItemId, childQstId }
     },
 
     /** 사용자 응답 데이터 */
@@ -123,7 +124,9 @@ document.addEventListener('alpine:init', () => {
         this.survey.endDate     = intro.endDate
           ? intro.endDate.substring(0, 10).replaceAll('-', '.')
           : '';
-        this.survey.questions   = questionsRes.data.data ?? [];
+        const qData = questionsRes.data.data ?? {};
+        this.survey.questions = qData.questions ?? [];
+        this.survey.branches  = qData.branches ?? [];
 
         // 유형별 응답 초기값 세팅
         this.survey.questions.forEach(q => {
@@ -203,12 +206,26 @@ document.addEventListener('alpine:init', () => {
     // 조건분기 가시성
     // ═══════════════════════════════════════════════
 
+    // 자식 qstId 로 분기 정의 찾기
+    findBranchByChild(qstId) {
+      return this.survey.branches.find(b => b.childQstId === qstId);
+    },
+
+    // 부모 qstId 로 분기 정의 찾기 (현재 1:1 가정 — 첫 번째 매칭만 반환)
+    findBranchByParent(qstId) {
+      return this.survey.branches.find(b => b.parentQstId === qstId);
+    },
+
+    // 분기 자식 문항 여부
+    isBranchChild(q) {
+      return this.findBranchByChild(q.qstId) !== undefined;
+    },
+
     isVisible(q) {
-      if (!q.isBranch) return true;
-      const parent = this.survey.questions.find(p => p.childQuestionId === q.qstId);
-      if (!parent) return true;
-      // 부모 문항에서 선택한 itemId === 이 문항의 parentItemId 일 때만 노출
-      return this.responses.single[parent.qstId] === q.parentItemId;
+      const branch = this.findBranchByChild(q.qstId);
+      if (!branch) return true;
+      // 부모 문항에서 선택한 itemId === 분기 정의의 parentItemId 일 때만 노출
+      return this.responses.single[branch.parentQstId] === branch.parentItemId;
     },
 
     /**
@@ -218,26 +235,22 @@ document.addEventListener('alpine:init', () => {
      */
     get orderedQuestions() {
       const result = [];
-      const branchSet = new Set(
-        this.survey.questions
-          .filter(q => q.isBranch)
-          .map(q => q.qstId)
-      );
 
       this.survey.questions
-        .filter(q => !q.isBranch)
+        .filter(q => !this.isBranchChild(q))
         .forEach(q => {
           result.push(q);
-          // 이 문항의 분기 자식이 있으면 바로 뒤에 삽입
-          if (q.childQuestionId) {
-            const child = this.survey.questions.find(c => c.qstId === q.childQuestionId);
+          // 이 문항이 부모인 분기가 있으면 자식을 바로 뒤에 삽입
+          const branch = this.findBranchByParent(q.qstId);
+          if (branch) {
+            const child = this.survey.questions.find(c => c.qstId === branch.childQstId);
             if (child) result.push(child);
           }
         });
 
-      // 혹시 부모가 없는 분기 문항이 있으면 맨 뒤에 추가 (방어 코드)
+      // 부모가 없는 분기 자식이 있으면 맨 뒤에 추가 (방어 코드)
       this.survey.questions
-        .filter(q => q.isBranch && !result.find(r => r.qstId === q.qstId))
+        .filter(q => this.isBranchChild(q) && !result.find(r => r.qstId === q.qstId))
         .forEach(q => result.push(q));
 
       return result;
@@ -249,12 +262,10 @@ document.addEventListener('alpine:init', () => {
 
     // 문항 번호 표시 (분기 문항은 "N-1" 형식)
     getDisplayNo(q) {
-      if (q.isBranch) {
-        const parent = this.survey.questions.find(p => p.childQuestionId === q.qstId);
-        if (parent) {
-          const pNo = this.visibleQuestions.findIndex(vq => vq.qstId === parent.qstId) + 1;
-          return `${pNo}-1`;
-        }
+      const branch = this.findBranchByChild(q.qstId);
+      if (branch) {
+        const pNo = this.visibleQuestions.findIndex(vq => vq.qstId === branch.parentQstId) + 1;
+        return `${pNo}-1`;
       }
       return this.visibleQuestions.findIndex(vq => vq.qstId === q.qstId) + 1;
     },
@@ -290,8 +301,9 @@ document.addEventListener('alpine:init', () => {
       this.responses.single[q.qstId] = itemId;
       delete this.responses.errors[q.qstId];
       // 분기 자식 문항 답변 초기화
-      if (q.childQuestionId) {
-        const cid = q.childQuestionId;
+      const branch = this.findBranchByParent(q.qstId);
+      if (branch) {
+        const cid = branch.childQstId;
         delete this.responses.single[cid];
         this.responses.multiple[cid] = [];
         this.responses.text[cid]     = '';
@@ -607,10 +619,10 @@ document.addEventListener('alpine:init', () => {
             <div class="flex items-center gap-2 mb-2 flex-wrap">
               <!-- 문항 번호 뱃지 -->
               <span class="text-xs font-semibold px-2 py-0.5 rounded-md"
-                    :class="q.isBranch
+                    :class="isBranchChild(q)
                       ? 'bg-orange-50 text-orange-500 border border-orange-200'
                       : 'bg-orange-50 text-orange-500'"
-                    x-text="q.isBranch ? `문항 ${getDisplayNo(q)}` : `문항 ${getDisplayNo(q)}`">
+                    x-text="`문항 ${getDisplayNo(q)}`">
               </span>
               <span x-show="q.esntlYn" class="text-xs text-red-400 font-medium">필수</span>
               <span class="text-xs text-gray-400">·</span>

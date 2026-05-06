@@ -1,9 +1,14 @@
 package com.woongjin.survey.domain.survey.service;
 
+import com.woongjin.survey.domain.survey.domain.Question;
+import com.woongjin.survey.domain.survey.domain.QuestionBranch;
+import com.woongjin.survey.domain.survey.dto.BranchDto;
 import com.woongjin.survey.domain.survey.dto.QuestionDto;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResponse;
+import com.woongjin.survey.domain.survey.dto.SurveyQuestionsResponse;
 import com.woongjin.survey.domain.survey.dto.submit.SurveyAnswerDto;
 import com.woongjin.survey.domain.survey.infra.SurveyDraftRepository;
+import com.woongjin.survey.domain.survey.repository.QuestionBranchRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyQuestionRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyRepository;
 import com.woongjin.survey.global.exception.BusinessException;
@@ -33,6 +38,7 @@ public class SurveyQueryService {
 
     private final SurveyRepository         surveyRepository;
     private final SurveyQuestionRepository surveyQuestionRepository;
+    private final QuestionBranchRepository questionBranchRepository;
     private final SurveyDraftRepository    surveyDraftRepository;
 
     // =============================================
@@ -40,18 +46,30 @@ public class SurveyQueryService {
     // =============================================
 
     /**
-     * 설문 문항 + 옵션 목록 조회
+     * 설문 문항 + 분기 정보 조회
      */
     @Transactional(readOnly = true)
-    public List<QuestionDto> getQuestions(Long surveyId) {
+    public SurveyQuestionsResponse getQuestions(Long surveyId) {
         if (!surveyRepository.existsById(surveyId)) {
             throw new BusinessException(ErrorCode.SURVEY_NOT_FOUND);
         }
 
-        return surveyQuestionRepository.findBySurveyIdAndDeletedAtIsNullOrderBySortOrderAsc(surveyId)
-                .stream()
+        List<Question> questions = surveyQuestionRepository
+                .findBySurveyIdAndDeletedAtIsNullOrderBySortOrderAsc(surveyId);
+
+        List<Long> questionIds = questions.stream().map(Question::getId).toList();
+        List<QuestionBranch> branches = questionIds.isEmpty()
+                ? List.of()
+                : questionBranchRepository.findByParentQuestionIdIn(questionIds);
+
+        List<QuestionDto> questionDtos = questions.stream()
                 .map(QuestionDto::from)
                 .toList();
+        List<BranchDto> branchDtos = branches.stream()
+                .map(BranchDto::from)
+                .toList();
+
+        return new SurveyQuestionsResponse(questionDtos, branchDtos);
     }
 
     // =============================================

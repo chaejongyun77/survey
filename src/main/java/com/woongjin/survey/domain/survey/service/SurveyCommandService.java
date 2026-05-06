@@ -6,11 +6,13 @@ import com.woongjin.survey.domain.employee.domain.Employee;
 import com.woongjin.survey.domain.employee.repository.EmployeeRepository;
 import com.woongjin.survey.domain.survey.domain.Answer;
 import com.woongjin.survey.domain.survey.domain.Question;
+import com.woongjin.survey.domain.survey.domain.QuestionBranch;
 import com.woongjin.survey.domain.survey.dto.SurveyIntroResult;
 import com.woongjin.survey.domain.survey.dto.submit.SurveyAnswerDto;
 import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
 import com.woongjin.survey.domain.survey.infra.SurveyDraftRepository;
 import com.woongjin.survey.domain.survey.infra.SurveyTokenRepository;
+import com.woongjin.survey.domain.survey.repository.QuestionBranchRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyQuestionRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyResponseRepository;
 import com.woongjin.survey.global.exception.BusinessException;
@@ -42,6 +44,7 @@ public class SurveyCommandService {
     private final SurveyParticipationValidator participationValidator;
     private final ClientTokenProvider          clientTokenProvider;
     private final SurveyQuestionRepository     surveyQuestionRepository;
+    private final QuestionBranchRepository     questionBranchRepository;
     private final SurveyResponseRepository     surveyResponseRepository;
     private final SurveyAnswerValidator        answerValidator;
     private final SurveyDraftRepository        surveyDraftRepository;
@@ -218,9 +221,16 @@ public class SurveyCommandService {
         List<Question> questions = surveyQuestionRepository.findBySurveyIdAndDeletedAtIsNullOrderBySortOrderAsc(surveyId);
         log.info("[submit] ② 문항 조회 완료: questions.size={}", questions.size());
 
+        // ②-1 분기 정보 조회
+        List<Long> questionIds = questions.stream().map(Question::getId).toList();
+        List<QuestionBranch> branches = questionIds.isEmpty()
+                ? List.of()
+                : questionBranchRepository.findByParentQuestionIdIn(questionIds);
+        log.info("[submit] ②-1 분기 조회 완료: branches.size={}", branches.size());
+
         // ③ 답변 비즈니스 검증 (최종 제출이므로 strict=true)
         List<SurveyAnswerDto> answers = request.getAnswers();
-        answerValidator.validate(questions, answers, true);
+        answerValidator.validate(questions, branches, answers, true);
         log.info("[submit] ③ 답변 검증 통과");
 
         // ④ JSON 직렬화

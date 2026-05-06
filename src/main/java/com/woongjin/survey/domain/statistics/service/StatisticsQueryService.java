@@ -141,7 +141,6 @@ public class StatisticsQueryService {
 
         List<QuestionStatItemResponse> items;
         Double average = null;
-        List<String> sampleTexts = null;
 
         if (data instanceof ChoiceStatResult c) {
             items = buildChoiceItems(c, question.getItems(), total);
@@ -150,9 +149,8 @@ public class StatisticsQueryService {
             average = s.average();
         } else if (data instanceof RankingStatResult r) {
             items = buildRankingItems(r, question.getItems(), total);
-        } else if (data instanceof SubjectiveStatResult sub) {
-            items = List.of();
-            sampleTexts = sub.sampleTexts();
+        } else if (data instanceof SubjectiveStatResult) {
+            items = List.of();              // 주관식은 items 비움
         } else {
             throw new IllegalStateException("Unknown stat result: " + data.getClass());
         }
@@ -163,8 +161,7 @@ public class StatisticsQueryService {
                 question.getQuestionName(),
                 total,
                 items,
-                average,
-                sampleTexts
+                average
         );
     }
 

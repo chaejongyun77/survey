@@ -59,5 +59,4 @@ public interface StatisticsRepository {
      * - 정렬: 문항 sortOrder ASC
      */
     List<QuestionMetaDto> findQuestionsWithItems(Long surveyId);
-
 }

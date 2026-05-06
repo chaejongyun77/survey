@@ -12,9 +12,7 @@ import java.util.List;
 /**
  * 설문 문항 응답 DTO
  *
- * isBranch        : 조건분기 대상 문항 여부 (parentItemId != null)
- * parentItemId    : 이 문항을 활성화시키는 부모 항목 ID
- * childQuestionId : 이 문항 선택 시 활성화될 자식 문항 ID
+ * 분기 정보는 별도의 BranchDto / SurveyQuestionsResponse 로 분리되어 전달된다.
  */
 @Getter
 @Builder(access = AccessLevel.PRIVATE)
@@ -36,21 +34,6 @@ public class QuestionDto {
     /** 정렬 순서 */
     private final Integer sortOrder;
 
-    /** 조건분기 대상 문항 여부 (parentItemId != null 이면 true) */
-    private final Boolean isBranch;
-
-    /**
-     * 조건분기 — 이 문항을 활성화시키는 부모 항목 ID
-     * null 이면 분기 없음
-     */
-    private final Long parentItemId;
-
-    /**
-     * 조건분기 — 이 문항 선택 시 활성화될 자식 문항 ID
-     * null 이면 분기 없음
-     */
-    private final Long childQuestionId;
-
     /** 옵션 목록 (SUBJECTIVE 유형은 빈 리스트) */
     private final List<QuestionItemDto> options;
 
@@ -66,9 +49,6 @@ public class QuestionDto {
                 .qstCn(question.getQuestionName())
                 .esntlYn(question.getRequired())
                 .sortOrder(question.getSortOrder())
-                .isBranch(question.getParentItemId() != null)   // parentItemId 있으면 분기 문항
-                .parentItemId(question.getParentItemId())
-                .childQuestionId(question.getChildQuestionId())
                 .options(options)
                 .build();
     }

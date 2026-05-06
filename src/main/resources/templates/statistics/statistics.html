@@ -242,25 +242,11 @@
               </div>
             </template>
 
-            <!-- SUBJECTIVE — 응답 수 + 텍스트 토글 -->
+            <!-- SUBJECTIVE — 응답 수만 -->
             <template x-if="q.questionType === 'SUBJECTIVE'">
-              <div>
-                <div class="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3 text-sm text-gray-500">
-                  <span>응답 <span class="text-gray-700 font-medium"
-                        x-text="q.totalResponseCount.toLocaleString() + '건'"></span></span>
-                  <button x-show="q.sampleTexts && q.sampleTexts.length > 0"
-                          @click="q.textOpen = !q.textOpen"
-                          class="text-xs font-medium text-orange-500 hover:text-orange-600">
-                    <span x-text="q.textOpen ? '닫기' : '답변 보기'"></span>
-                  </button>
-                </div>
-                <div x-show="q.textOpen" class="mt-2 space-y-2">
-                  <template x-for="(text, i) in q.sampleTexts" :key="i">
-                    <div class="bg-gray-50 rounded-lg px-4 py-2.5 text-sm text-gray-700" x-text="text"></div>
-                  </template>
-                  <p x-show="q.sampleTexts && q.sampleTexts.length >= 30"
-                     class="text-xs text-gray-400 text-center pt-1">최대 30건까지 표시됩니다</p>
-                </div>
+              <div class="bg-gray-50 rounded-lg px-4 py-3 text-sm text-gray-500">
+                응답 <span class="text-gray-700 font-medium"
+                          x-text="q.totalResponseCount.toLocaleString() + '건'"></span>
               </div>
             </template>
 
@@ -406,7 +392,7 @@
         try {
           const res = await axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/questions`);
           const data = res.data.data;
-          this.questionStats = data.questions.map(q => ({ ...q, textOpen: false }));
+          this.questionStats = data.questions;
           this.aggregatedAt = data.aggregatedAt;
           this.ui.questionsLoaded = true;
         } catch (e) {

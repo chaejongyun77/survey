@@ -1,11 +1,14 @@
+/*
 package com.woongjin.survey.domain.survey.service;
 
 import com.woongjin.survey.domain.survey.domain.Answer;
 import com.woongjin.survey.domain.survey.domain.Question;
+import com.woongjin.survey.domain.survey.domain.QuestionBranch;
 import com.woongjin.survey.domain.survey.dto.submit.SurveyAnswerDto;
 import com.woongjin.survey.domain.survey.dto.submit.SubmitRequest;
 import com.woongjin.survey.domain.survey.dto.submit.SurveyAnswerDto;
 import com.woongjin.survey.domain.survey.infra.SurveyDraftRepository;
+import com.woongjin.survey.domain.survey.repository.QuestionBranchRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyQuestionRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyResponseRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+*/
 /**
  * 설문 제출 서비스
  *
@@ -29,13 +33,15 @@ import java.util.List;
  * - empId 는 Client JWT 클레임에서 이미 확보됨 → Employee 재조회 불필요
  * - AuditorAwareImpl 이 request attribute(clientEmpId) 에서 empId 를 읽으므로
  *   SecurityContext 조작 불필요
- */
+ *//*
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SurveySubmitService {
 
     private final SurveyQuestionRepository     surveyQuestionRepository;
+    private final QuestionBranchRepository     questionBranchRepository;
     private final SurveyResponseRepository     surveyResponseRepository;
     private final SurveyParticipationValidator participationValidator;
     private final SurveyAnswerValidator        answerValidator;
@@ -56,9 +62,16 @@ public class SurveySubmitService {
                 .findBySurveyIdAndDeletedAtIsNullOrderBySortOrderAsc(surveyId);
         log.info("[submit] ② 문항 조회 완료: questions.size={}", questions.size());
 
+        // ②-1 분기 정보 조회
+        List<Long> questionIds = questions.stream().map(Question::getId).toList();
+        List<QuestionBranch> branches = questionIds.isEmpty()
+                ? List.of()
+                : questionBranchRepository.findByParentQuestionIdIn(questionIds);
+        log.info("[submit] ②-1 분기 조회 완료: branches.size={}", branches.size());
+
         // ③ 답변 비즈니스 검증 (최종 제출이므로 strict=true)
         List<SurveyAnswerDto> answers = request.getAnswers();
-        answerValidator.validate(questions, answers, true);
+        answerValidator.validate(questions, branches, answers, true);
         log.info("[submit] ③ 답변 검증 통과");
 
         // ④ DB INSERT — @JdbcTypeCode(SqlTypes.JSON) 이 Jackson으로 자동 직렬화
@@ -76,3 +89,4 @@ public class SurveySubmitService {
         log.info("[submit] ⑤ 임시저장 삭제 완료: surveyId={}, empId={}", surveyId, empId);
     }
 }
+*/
