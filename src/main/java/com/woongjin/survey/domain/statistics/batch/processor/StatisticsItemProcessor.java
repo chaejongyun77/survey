@@ -65,26 +65,12 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
         List<QuestionStat> result = new ArrayList<>(questions.size());
         for (Question q : questions) {
             List<SurveyAnswerDto> answers = answersByQuestion.getOrDefault(q.getId(), List.of());
-            result.add(toQuestionStat(q, answers, now));
+            result.add(QuestionStat.from(q, answers.size(), aggregate(q.getQuestionType(), answers), now));
         }
 
         log.info("[stat-batch] 설문 집계 완료 surveyId={}, 응답수={}, 문항수={}",
                 surveyId, responses.size(), result.size());
         return result;
-    }
-
-    private QuestionStat toQuestionStat(Question question, List<SurveyAnswerDto> answers, LocalDateTime now) {
-        QuestionType type = question.getQuestionType();
-        QuestionStatResult data = aggregate(type, answers);
-
-        return QuestionStat.builder()
-                .surveyId(question.getSurveyId())
-                .questionId(question.getId())
-                .questionType(type)
-                .totalResponseCount(answers.size())
-                .statData(data)
-                .aggregatedAt(now)
-                .build();
     }
 
     private QuestionStatResult aggregate(QuestionType type, List<SurveyAnswerDto> answers) {

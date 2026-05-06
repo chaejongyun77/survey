@@ -1,6 +1,7 @@
 package com.woongjin.survey.domain.statistics.domain;
 
 import com.woongjin.survey.domain.statistics.domain.statresult.QuestionStatResult;
+import com.woongjin.survey.domain.survey.domain.Question;
 import com.woongjin.survey.domain.survey.domain.enums.QuestionType;
 import com.woongjin.survey.global.jpa.BaseEntity;
 import jakarta.persistence.*;
@@ -67,6 +68,18 @@ public class QuestionStat extends BaseEntity {
 
     @Column(name = "AGGRGT_DT", nullable = false)
     private LocalDateTime aggregatedAt;
+
+    public static QuestionStat from(Question question, int responseCount,
+                                    QuestionStatResult statData, LocalDateTime aggregatedAt) {
+        return builder()
+                .surveyId(question.getSurveyId())
+                .questionId(question.getId())
+                .questionType(question.getQuestionType())
+                .totalResponseCount(responseCount)
+                .statData(statData)
+                .aggregatedAt(aggregatedAt)
+                .build();
+    }
 
     @Builder
     private QuestionStat(Long surveyId,
