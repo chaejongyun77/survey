@@ -172,7 +172,6 @@ public class StatisticsQueryService {
     private List<QuestionStatItemResponse> buildChoiceItems(
             ChoiceStatResult data, List<QuestionItem> options, int total) {
         return options.stream()
-                .filter(opt -> opt.getDeletedAt() == null)
                 .map(opt -> {
                     int count = data.itemCounts().getOrDefault(opt.getId(), 0);
                     return new QuestionStatItemResponse(opt.getItemName(), count, percentage(count, total));
@@ -188,16 +187,12 @@ public class StatisticsQueryService {
      */
     private List<QuestionStatItemResponse> buildScaleItems(
             ScaleStatResult data, List<QuestionItem> options, int total) {
-        List<QuestionItem> active = options.stream()
-                .filter(opt -> opt.getDeletedAt() == null)
-                .toList();
-
-        List<QuestionStatItemResponse> result = new ArrayList<>(active.size());
-        for (int i = 0; i < active.size(); i++) {
+        List<QuestionStatItemResponse> result = new ArrayList<>(options.size());
+        for (int i = 0; i < options.size(); i++) {
             int score = i + 1;
             int count = data.valueCounts().getOrDefault(score, 0);
             result.add(new QuestionStatItemResponse(
-                    active.get(i).getItemName(),
+                    options.get(i).getItemName(),
                     count,
                     percentage(count, total)));
         }
@@ -208,7 +203,6 @@ public class StatisticsQueryService {
     private List<QuestionStatItemResponse> buildRankingItems(
             RankingStatResult data, List<QuestionItem> options, int total) {
         return options.stream()
-                .filter(opt -> opt.getDeletedAt() == null)
                 .map(opt -> {
                     Map<Integer, Integer> ranks = data.rankCounts().getOrDefault(opt.getId(), Map.of());
                     int firstPlaceCount = ranks.getOrDefault(1, 0);

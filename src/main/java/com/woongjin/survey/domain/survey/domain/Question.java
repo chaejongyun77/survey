@@ -3,6 +3,7 @@ package com.woongjin.survey.domain.survey.domain;
 import com.woongjin.survey.domain.survey.domain.enums.QuestionType;
 import com.woongjin.survey.global.jpa.BaseEntity;
 import jakarta.persistence.*;
+import org.hibernate.annotations.SQLRestriction;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -71,5 +72,6 @@ public class Question extends BaseEntity {
     /** 문항 항목 목록 (옵션) — TEXT 유형은 비어있음 */
     @OneToMany(mappedBy = "question", fetch = FetchType.LAZY)
     @OrderBy("sortOrder ASC")
+    @SQLRestriction("DEL_DT IS NULL")
     private List<QuestionItem> items = new ArrayList<>();
 }
