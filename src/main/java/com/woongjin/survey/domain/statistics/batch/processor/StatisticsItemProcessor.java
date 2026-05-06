@@ -65,26 +65,12 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
         List<QuestionStat> result = new ArrayList<>(questions.size());
         for (Question q : questions) {
             List<SurveyAnswerDto> answers = answersByQuestion.getOrDefault(q.getId(), List.of());
-            result.add(toQuestionStat(q, answers, now));
+            result.add(QuestionStat.from(q, answers.size(), aggregate(q.getQuestionType(), answers), now));
         }
 
         log.info("[stat-batch] 설문 집계 완료 surveyId={}, 응답수={}, 문항수={}",
                 surveyId, responses.size(), result.size());
         return result;
-    }
-
-    private QuestionStat toQuestionStat(Question question, List<SurveyAnswerDto> answers, LocalDateTime now) {
-        QuestionType type = question.getQuestionType();
-        QuestionStatResult data = aggregate(type, answers);
-
-        return QuestionStat.builder()
-                .surveyId(question.getSurveyId())
-                .questionId(question.getId())
-                .questionType(type)
-                .totalResponseCount(answers.size())
-                .statData(data)
-                .aggregatedAt(now)
-                .build();
     }
 
     private QuestionStatResult aggregate(QuestionType type, List<SurveyAnswerDto> answers) {
@@ -96,7 +82,8 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
         };
     }
 
-    /** 선택형: itemId 별 선택 횟수 카운트. MULTIPLE 의 경우 한 응답자가 여러 itemId 가질 수 있음. */
+    // 항목별 선택 횟수 카운트
+    // 예) [{selected:[1,2]}, {selected:[1]}] → {1:2, 2:1}
     private ChoiceStatResult aggregateChoice(List<SurveyAnswerDto> answers) {
         Map<Long, Integer> itemCounts = new HashMap<>();
         for (SurveyAnswerDto a : answers) {
@@ -109,7 +96,8 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
         return new ChoiceStatResult(itemCounts);
     }
 
-    /** 척도형: 점수별 카운트 + 평균(소수 둘째자리). */
+    // 점수별 카운트 + 평균(소수 둘째 자리)
+    // 예) [3, 5, 4] → {3:1, 4:1, 5:1}, avg=4.0
     private ScaleStatResult aggregateScale(List<SurveyAnswerDto> answers) {
         Map<Integer, Integer> valueCounts = new HashMap<>();
         long sum = 0;
@@ -129,19 +117,23 @@ public class StatisticsItemProcessor implements ItemProcessor<Long, List<Questio
         return new ScaleStatResult(valueCounts, average);
     }
 
-    /** 주관식: 비어있지 않은 응답 수만 집계. 텍스트는 통계에 저장하지 않음. */
+    // 비어있지 않은 응답 수 집계 + 텍스트 최대 30건 수집
+    // 예) ["좋아요", "", "보통"] → answered=2, sampleTexts=["좋아요","보통"]
     private SubjectiveStatResult aggregateSubjective(List<SurveyAnswerDto> answers) {
-        int answered = 0;
+        int answeredCount = 0;
+        List<String> sampleTexts = new ArrayList<>();
         for (SurveyAnswerDto a : answers) {
             String text = a.getTextAnswer();
             if (text != null && !text.isBlank()) {
-                answered++;
+                answeredCount++;
+                if (sampleTexts.size() < 30) sampleTexts.add(text);
             }
         }
-        return new SubjectiveStatResult(answered);
+        return new SubjectiveStatResult(answeredCount, sampleTexts);
     }
 
-    /** 순위형: itemId → (순위 → 카운트) 이중 맵. 배열 index 0 이 1순위. */
+    // 항목별 순위별 카운트 (배열 index 0 = 1순위)
+    // 예) [{ranked:[A,B]}, {ranked:[B,A]}] → {A:{1위:1,2위:1}, B:{1위:1,2위:1}}
     private RankingStatResult aggregateRanking(List<SurveyAnswerDto> answers) {
         Map<Long, Map<Integer, Integer>> rankCounts = new HashMap<>();
         for (SurveyAnswerDto a : answers) {
