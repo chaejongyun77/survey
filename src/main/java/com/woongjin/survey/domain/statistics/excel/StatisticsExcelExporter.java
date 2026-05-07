@@ -1,8 +1,12 @@
 package com.woongjin.survey.domain.statistics.excel;
 
 import com.woongjin.survey.domain.statistics.dto.DeptResponseRateResponse;
+import com.woongjin.survey.domain.statistics.dto.QuestionStatisticsListResponse;
+import com.woongjin.survey.domain.statistics.dto.ResponseListResponse;
 import com.woongjin.survey.domain.statistics.dto.StatisticsSummaryResponse;
 import com.woongjin.survey.domain.statistics.excel.sheet.DeptSheetWriter;
+import com.woongjin.survey.domain.statistics.excel.sheet.QuestionStatSheetWriter;
+import com.woongjin.survey.domain.statistics.excel.sheet.RespondentSheetWriter;
 import com.woongjin.survey.domain.statistics.excel.sheet.SummarySheetWriter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +27,7 @@ import java.util.function.Consumer;
  * - 본 클래스는 워크북 생성/쓰기 보일러플레이트와 시트 조립만 담당
  *
  * [확장]
- * - 시트3, 4 추가 시: SheetWriter 주입 + exportAll() 파라미터/호출 한 줄씩 추가
+ * - 시트 추가 시: SheetWriter 주입 + exportAll() 파라미터/호출 한 줄씩 추가
  */
 @Slf4j
 @Component
@@ -32,14 +36,20 @@ public class StatisticsExcelExporter {
 
     private final SummarySheetWriter summarySheetWriter;
     private final DeptSheetWriter deptSheetWriter;
+    private final RespondentSheetWriter respondentSheetWriter;
+    private final QuestionStatSheetWriter questionStatSheetWriter;
 
     /** 통계 페이지 전체(현재까지 구현된 시트들) → 단일 워크북 .xlsx */
     public byte[] exportAll(StatisticsSummaryResponse summary,
-                            List<DeptResponseRateResponse> depts) {
+                            List<DeptResponseRateResponse> depts,
+                            ResponseListResponse respondents,
+                            QuestionStatisticsListResponse questionStats) {
         return build(wb -> {
             ExcelStyles styles = new ExcelStyles(wb);
             summarySheetWriter.write(wb, styles, summary);
             deptSheetWriter.write(wb, styles, depts);
+            respondentSheetWriter.write(wb, styles, respondents);
+            questionStatSheetWriter.write(wb, styles, questionStats);
         });
     }
 

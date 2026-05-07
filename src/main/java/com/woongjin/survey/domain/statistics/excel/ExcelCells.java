@@ -25,10 +25,20 @@ public final class ExcelCells {
         cell.setCellStyle(style);
     }
 
-    /** 시트 컬럼 N 개에 일괄 autoSize. (SXSSF 는 trackAllColumnsForAutoSizing() 선행 필수) */
+    /** 시트 컬럼 N 개에 autoSize 후 최소 너비(chars) 보장.
+     *  SXSSF 는 flush된 행은 autoSize 반영 안 되는 경우가 있어 하한선을 명시적으로 설정. */
     public static void autoSizeAll(Sheet sheet, int columnCount) {
+        autoSizeAll(sheet, columnCount, 12);
+    }
+
+    /** minWidthChars: 최소 너비 (엑셀 문자 단위, 1 unit ≈ 256). */
+    public static void autoSizeAll(Sheet sheet, int columnCount, int minWidthChars) {
+        int minWidth = minWidthChars * 256;
         for (int i = 0; i < columnCount; i++) {
             sheet.autoSizeColumn(i);
+            if (sheet.getColumnWidth(i) < minWidth) {
+                sheet.setColumnWidth(i, minWidth);
+            }
         }
     }
 

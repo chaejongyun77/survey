@@ -94,6 +94,26 @@ public class StatisticsQueryService {
     }
 
     /**
+     * 응답자별 문항답변 — 전체 조회 (엑셀 다운로드용)
+     *
+     * - questions : 동적 컬럼 헤더 + 라벨 매핑 데이터 (전체)
+     * - responses : limit 없이 전체 응답 반환
+     */
+    @Transactional(readOnly = true)
+    public ResponseListResponse getResponseListForExcel(Long surveyId) {
+
+        if (!surveyRepository.existsById(surveyId)) {
+            throw new BusinessException(ErrorCode.SURVEY_NOT_FOUND);
+        }
+
+        List<QuestionMetaDto> questions = statisticsRepository.findQuestionsWithItems(surveyId);
+        List<RespondentAnswerDto> responses = statisticsRepository.findRecentResponses(surveyId, Integer.MAX_VALUE);
+        int totalCount = responses.size();
+
+        return new ResponseListResponse(questions, responses, totalCount, totalCount);
+    }
+
+    /**
      * 문항별 응답현황 조회 — 통계 페이지 두 번째 탭.
      *
      * [흐름]

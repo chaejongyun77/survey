@@ -90,14 +90,18 @@ public class StatisticsController {
 
     /**
      * 통계 엑셀 다운로드 — 현재까지 구현된 시트들을 단일 .xlsx 로 묶어 반환.
-     * - 시트3, 4 가 추가되면 같은 엔드포인트의 묶음이 확장됨
+     * - 시트1: 설문 기본정보 요약
+     * - 시트2: 조직별 응답현황
+     * - 시트3: 응답자별 문항 답변 (전체)
      * - 파일명: 설문통계_{설문명}_{yyyyMMdd-HHmm}.xlsx (RFC 5987 / UTF-8 인코딩)
      */
     @GetMapping("/export")
     public ResponseEntity<byte[]> exportStatistics(@PathVariable Long surveyId) {
         StatisticsSummaryResponse summary = statisticsQueryService.getSummary(surveyId);
         List<DeptResponseRateResponse> depts = statisticsQueryService.getDeptResponseRates(surveyId);
-        byte[] body = statisticsExcelExporter.exportAll(summary, depts);
+        ResponseListResponse respondents = statisticsQueryService.getResponseListForExcel(surveyId);
+        QuestionStatisticsListResponse questionStats = statisticsQueryService.getQuestionStatistics(surveyId);
+        byte[] body = statisticsExcelExporter.exportAll(summary, depts, respondents, questionStats);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(

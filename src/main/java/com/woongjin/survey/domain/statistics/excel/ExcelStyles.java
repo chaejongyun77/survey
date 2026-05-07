@@ -5,9 +5,11 @@ import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
-import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFColor;
 
 /**
  * 통계 엑셀 스타일 묶음.
@@ -15,15 +17,24 @@ import org.apache.poi.ss.usermodel.Workbook;
  * [설계 메모]
  * - Workbook 인스턴스당 한 번 생성, 시트들 간 공유
  *   · XLSX 는 워크북당 스타일 개수 제한(64K) 이 있어 재사용이 중요
- * - SheetWriter 들이 styles.xxx() 로 꺼내 씀
+ * - IndexedColors(256색 레거시) 대신 XSSFColor(RGB) 사용
+ *   · SXSSFWorkbook → getXSSFWorkbook() 으로 XSSFWorkbook 접근 후 캐스팅
  */
 public class ExcelStyles {
+
+    // 컬러 팔레트
+    private static final byte[] COLOR_HEADER_BG  = hex(0x3B, 0x82, 0xF6); // 블루-500
+    private static final byte[] COLOR_KEY_BG     = hex(0xEF, 0xF6, 0xFF); // 블루-50
+    private static final byte[] COLOR_GRAY_BG    = hex(0xF3, 0xF4, 0xF6); // gray-100
+    private static final byte[] COLOR_WHITE      = hex(0xFF, 0xFF, 0xFF);
+    private static final byte[] COLOR_TEXT_DARK  = hex(0x1F, 0x29, 0x37); // gray-900
+    private static final byte[] COLOR_BORDER     = hex(0xD1, 0xD5, 0xDB); // gray-300
 
     private final CellStyle title;
     private final CellStyle header;
     private final CellStyle key;
     private final CellStyle value;
-    private final CellStyle valueGray;   // lowRate 등 회색 강조용
+    private final CellStyle valueGray;
 
     public ExcelStyles(Workbook wb) {
         this.title     = title(wb);
@@ -40,63 +51,91 @@ public class ExcelStyles {
     public CellStyle valueGray() { return valueGray; }
 
     private static CellStyle title(Workbook wb) {
-        CellStyle s = base(wb);
+        XSSFCellStyle s = xssfBase(wb);
         Font f = wb.createFont();
         f.setBold(true);
         f.setFontHeightInPoints((short) 13);
+        setFontColor(wb, f, COLOR_TEXT_DARK);
         s.setFont(f);
-        s.setAlignment(HorizontalAlignment.CENTER);
+        s.setAlignment(HorizontalAlignment.LEFT);
+        s.setVerticalAlignment(VerticalAlignment.CENTER);
         return s;
     }
 
     private static CellStyle header(Workbook wb) {
-        CellStyle s = bordered(wb);
+        XSSFCellStyle s = xssfBordered(wb);
         Font f = wb.createFont();
         f.setBold(true);
-        f.setColor(IndexedColors.WHITE.getIndex());
+        f.setFontHeightInPoints((short) 10);
+        setFontColor(wb, f, COLOR_WHITE);
         s.setFont(f);
-        s.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+        s.setFillForegroundColor(new XSSFColor(COLOR_HEADER_BG, null));
         s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         s.setAlignment(HorizontalAlignment.CENTER);
         return s;
     }
 
     private static CellStyle key(Workbook wb) {
-        CellStyle s = bordered(wb);
+        XSSFCellStyle s = xssfBordered(wb);
         Font f = wb.createFont();
         f.setBold(true);
+        f.setFontHeightInPoints((short) 10);
+        setFontColor(wb, f, COLOR_TEXT_DARK);
         s.setFont(f);
-        s.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
+        s.setFillForegroundColor(new XSSFColor(COLOR_KEY_BG, null));
         s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         s.setAlignment(HorizontalAlignment.LEFT);
         return s;
     }
 
     private static CellStyle value(Workbook wb) {
-        CellStyle s = bordered(wb);
+        XSSFCellStyle s = xssfBordered(wb);
+        Font f = wb.createFont();
+        f.setFontHeightInPoints((short) 10);
+        setFontColor(wb, f, COLOR_TEXT_DARK);
+        s.setFont(f);
         s.setAlignment(HorizontalAlignment.LEFT);
         return s;
     }
 
     private static CellStyle valueGray(Workbook wb) {
-        CellStyle s = value(wb);
-        s.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+        XSSFCellStyle s = (XSSFCellStyle) value(wb);
+        s.setFillForegroundColor(new XSSFColor(COLOR_GRAY_BG, null));
         s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         return s;
     }
 
-    private static CellStyle base(Workbook wb) {
-        CellStyle s = wb.createCellStyle();
+    private static XSSFCellStyle xssfBase(Workbook wb) {
+        XSSFCellStyle s = (XSSFCellStyle) xssf(wb).createCellStyle();
         s.setVerticalAlignment(VerticalAlignment.CENTER);
         return s;
     }
 
-    private static CellStyle bordered(Workbook wb) {
-        CellStyle s = base(wb);
+    private static XSSFCellStyle xssfBordered(Workbook wb) {
+        XSSFCellStyle s = xssfBase(wb);
+        XSSFColor border = new XSSFColor(COLOR_BORDER, null);
         s.setBorderTop(BorderStyle.THIN);
         s.setBorderBottom(BorderStyle.THIN);
         s.setBorderLeft(BorderStyle.THIN);
         s.setBorderRight(BorderStyle.THIN);
+        s.setTopBorderColor(border);
+        s.setBottomBorderColor(border);
+        s.setLeftBorderColor(border);
+        s.setRightBorderColor(border);
         return s;
+    }
+
+    /** SXSSFWorkbook → XSSFWorkbook 접근 (RGB 색상 적용에 필요) */
+    private static org.apache.poi.xssf.usermodel.XSSFWorkbook xssf(Workbook wb) {
+        return ((SXSSFWorkbook) wb).getXSSFWorkbook();
+    }
+
+    private static void setFontColor(Workbook wb, Font font, byte[] rgb) {
+        ((org.apache.poi.xssf.usermodel.XSSFFont) font)
+                .setColor(new XSSFColor(rgb, null));
+    }
+
+    private static byte[] hex(int r, int g, int b) {
+        return new byte[]{(byte) r, (byte) g, (byte) b};
     }
 }
