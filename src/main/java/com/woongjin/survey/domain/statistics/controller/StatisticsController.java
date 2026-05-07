@@ -89,15 +89,15 @@ public class StatisticsController {
     }
 
     /**
-     * 설문 기본정보 요약 — 엑셀(.xlsx) 다운로드
-     * - 응답 본문: byte[] (xlsx 바이너리)
-     * - 파일명: 설문통계요약_{설문명}_{yyyyMMdd-HHmm}.xlsx
-     *   · 한글 안전하게 RFC 5987 형식 (filename* / UTF-8) 으로 전달
+     * 통계 엑셀 다운로드 — 현재까지 구현된 시트들을 단일 .xlsx 로 묶어 반환.
+     * - 시트3, 4 가 추가되면 같은 엔드포인트의 묶음이 확장됨
+     * - 파일명: 설문통계_{설문명}_{yyyyMMdd-HHmm}.xlsx (RFC 5987 / UTF-8 인코딩)
      */
-    @GetMapping("/export/summary")
-    public ResponseEntity<byte[]> exportSummary(@PathVariable Long surveyId) {
+    @GetMapping("/export")
+    public ResponseEntity<byte[]> exportStatistics(@PathVariable Long surveyId) {
         StatisticsSummaryResponse summary = statisticsQueryService.getSummary(surveyId);
-        byte[] body = statisticsExcelExporter.exportSummary(summary);
+        List<DeptResponseRateResponse> depts = statisticsQueryService.getDeptResponseRates(surveyId);
+        byte[] body = statisticsExcelExporter.exportAll(summary, depts);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(
@@ -113,11 +113,11 @@ public class StatisticsController {
      * - filename*: RFC 5987 — UTF-8 퍼센트 인코딩 (모던 브라우저가 우선 채택)
      */
     private String buildContentDisposition(String surveyTitle) {
-        String filename = "설문통계요약_" + sanitize(surveyTitle)
+        String filename = "설문통계_" + sanitize(surveyTitle)
                 + "_" + LocalDateTime.now().format(FILENAME_TIMESTAMP) + ".xlsx";
         String encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8)
                 .replace("+", "%20");   // form-encoding 의 '+' → '%20' (RFC 3986 호환)
-        return "attachment; filename=\"statistics-summary.xlsx\"; filename*=UTF-8''" + encoded;
+        return "attachment; filename=\"statistics.xlsx\"; filename*=UTF-8''" + encoded;
     }
 
     /** 파일명에 사용할 수 없는 문자 치환 (Windows/macOS 양쪽 안전). */

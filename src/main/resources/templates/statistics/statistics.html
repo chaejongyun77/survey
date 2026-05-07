@@ -23,7 +23,7 @@
   <!-- 헤더 -->
   <header class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-bold text-gray-900">설문 통계</h1>
-    <button @click="downloadSummaryExcel()"
+    <button @click="downloadStatisticsExcel()"
             class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white
                    hover:bg-gray-50 transition-colors">
       엑셀 다운로드
@@ -529,19 +529,19 @@
       },
 
       /**
-       * 설문 기본정보 요약 엑셀 다운로드
+       * 통계 엑셀 다운로드 — 현재까지 구현된 시트들을 단일 .xlsx 로 받음
        * - 응답: xlsx 바이너리 (responseType: 'blob' 필수)
        * - 파일명: 서버 Content-Disposition 헤더에서 추출 (RFC 5987 UTF-8)
        */
-      async downloadSummaryExcel() {
+      async downloadStatisticsExcel() {
         try {
           const res = await axios.get(
-              `/api/internal/v1/surveys/${SVY_ID}/statistics/export/summary`,
+              `/api/internal/v1/surveys/${SVY_ID}/statistics/export`,
               { responseType: 'blob' }
           );
 
           const filename = this.parseFilename(res.headers['content-disposition'])
-              ?? 'statistics-summary.xlsx';
+              ?? 'statistics.xlsx';
 
           const url = URL.createObjectURL(new Blob([res.data]));
           const a = document.createElement('a');
