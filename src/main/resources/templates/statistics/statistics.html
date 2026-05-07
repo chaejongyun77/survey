@@ -23,7 +23,8 @@
   <!-- 헤더 -->
   <header class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-bold text-gray-900">설문 통계</h1>
-    <button class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white
+    <button @click="downloadSummaryExcel()"
+            class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white
                    hover:bg-gray-50 transition-colors">
       엑셀 다운로드
     </button>
@@ -525,6 +526,49 @@
         const pad = (n) => String(n).padStart(2, '0');
         return `${t.getFullYear()}.${pad(t.getMonth() + 1)}.${pad(t.getDate())} `
              + `${pad(t.getHours())}:${pad(t.getMinutes())}`;
+      },
+
+      /**
+       * 설문 기본정보 요약 엑셀 다운로드
+       * - 응답: xlsx 바이너리 (responseType: 'blob' 필수)
+       * - 파일명: 서버 Content-Disposition 헤더에서 추출 (RFC 5987 UTF-8)
+       */
+      async downloadSummaryExcel() {
+        try {
+          const res = await axios.get(
+              `/api/internal/v1/surveys/${SVY_ID}/statistics/export/summary`,
+              { responseType: 'blob' }
+          );
+
+          const filename = this.parseFilename(res.headers['content-disposition'])
+              ?? 'statistics-summary.xlsx';
+
+          const url = URL.createObjectURL(new Blob([res.data]));
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          console.error('[statistics] 엑셀 다운로드 실패:', e);
+          alert('엑셀 파일을 다운로드하지 못했습니다.');
+        }
+      },
+
+      /**
+       * Content-Disposition 에서 파일명 추출
+       * - filename* (RFC 5987 UTF-8) 우선, 없으면 filename 폴백
+       */
+      parseFilename(header) {
+        if (!header) return null;
+        const utf8 = header.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+        if (utf8) {
+          try { return decodeURIComponent(utf8[1]); } catch (_) { /* fallthrough */ }
+        }
+        const ascii = header.match(/filename\s*=\s*"?([^";]+)"?/i);
+        return ascii ? ascii[1] : null;
       }
     }
   }
