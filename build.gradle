@@ -35,6 +35,9 @@ dependencies {
     // Spring Batch — 설문 통계 집계 배치
     implementation 'org.springframework.boot:spring-boot-starter-batch'
 
+    // Apache POI — 통계 엑셀 다운로드 (SXSSF 스트리밍 사용, 응답자별 시트 대용량 대응)
+    implementation 'org.apache.poi:poi-ooxml:5.3.0'
+
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
