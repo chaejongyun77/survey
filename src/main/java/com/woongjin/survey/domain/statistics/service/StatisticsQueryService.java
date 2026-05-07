@@ -18,8 +18,10 @@ import com.woongjin.survey.domain.statistics.dto.projection.SurveySummaryProject
 import com.woongjin.survey.domain.statistics.repository.QuestionStatRepository;
 import com.woongjin.survey.domain.statistics.repository.StatisticsRepository;
 import com.woongjin.survey.domain.survey.domain.Question;
+import com.woongjin.survey.domain.survey.domain.QuestionBranch;
 import com.woongjin.survey.domain.survey.domain.QuestionItem;
 import com.woongjin.survey.domain.survey.domain.Survey;
+import com.woongjin.survey.domain.survey.repository.QuestionBranchRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyQuestionRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyRepository;
 import com.woongjin.survey.global.exception.BusinessException;
@@ -32,8 +34,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -47,6 +51,7 @@ public class StatisticsQueryService {
     private final SurveyRepository surveyRepository;
     private final QuestionStatRepository questionStatRepository;
     private final SurveyQuestionRepository surveyQuestionRepository;
+    private final QuestionBranchRepository questionBranchRepository;
 
     @Transactional(readOnly = true)
     public StatisticsSummaryResponse getSummary(Long surveyId) {
@@ -141,14 +146,51 @@ public class StatisticsQueryService {
         List<Question> questions = surveyQuestionRepository
                 .findBySurveyIdAndDeletedAtIsNullOrderBySortOrderAsc(surveyId);
 
+        List<Long> questionIds = questions.stream().map(Question::getId).toList();
+
+        // 분기 관계 조회 — 자식 문항을 부모 바로 뒤에 배치하기 위함
+        List<QuestionBranch> branches = questionIds.isEmpty()
+                ? List.of()
+                : questionBranchRepository.findByParentQuestionIdIn(questionIds);
+
+        // childQuestionId → parentQuestionId 역색인
+        Map<Long, Long> parentByChildId = branches.stream()
+                .collect(Collectors.toMap(
+                        QuestionBranch::getChildQuestionId,
+                        QuestionBranch::getParentQuestionId,
+                        (a, b) -> a   // 동일 자식이 복수 부모를 가지는 경우 첫 번째 사용
+                ));
+
+        // 자식 문항 ID 집합
+        Set<Long> childIds = parentByChildId.keySet();
+
         Map<Long, QuestionStat> statByQuestionId = stats.stream()
                 .collect(Collectors.toMap(QuestionStat::getQuestionId, s -> s));
 
+        // 부모 문항 기준으로 순서 재구성:
+        // sortOrder 순 순회 → 부모 문항이면 바로 추가 + 해당 부모의 자식 문항들을 뒤에 삽입
+        // 자식 문항은 부모 처리 시 이미 삽입되므로 개별 순회에서 스킵
+        Map<Long, List<Question>> childrenByParentId = new LinkedHashMap<>();
+        for (Question q : questions) {
+            Long parentId = parentByChildId.get(q.getId());
+            if (parentId != null) {
+                childrenByParentId.computeIfAbsent(parentId, k -> new ArrayList<>()).add(q);
+            }
+        }
+
         List<QuestionStatisticsResponse> result = new ArrayList<>(questions.size());
         for (Question q : questions) {
+            if (childIds.contains(q.getId())) continue;  // 자식은 부모 처리 시 삽입
+
             QuestionStat stat = statByQuestionId.get(q.getId());
-            if (stat == null) continue;     // 통계가 아직 없는 문항은 스킵
-            result.add(toResponse(q, stat));
+            if (stat != null) result.add(toResponse(q, stat));
+
+            // 이 부모에 달린 자식 문항들을 바로 뒤에 삽입
+            List<Question> children = childrenByParentId.getOrDefault(q.getId(), List.of());
+            for (Question child : children) {
+                QuestionStat childStat = statByQuestionId.get(child.getId());
+                if (childStat != null) result.add(toResponse(child, childStat));
+            }
         }
 
         return new QuestionStatisticsListResponse(stats.get(0).getAggregatedAt(), result);
