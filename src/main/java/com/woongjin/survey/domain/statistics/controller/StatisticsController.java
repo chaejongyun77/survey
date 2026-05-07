@@ -4,14 +4,22 @@ import com.woongjin.survey.domain.statistics.dto.DeptResponseRateResponse;
 import com.woongjin.survey.domain.statistics.dto.QuestionStatisticsListResponse;
 import com.woongjin.survey.domain.statistics.dto.ResponseListResponse;
 import com.woongjin.survey.domain.statistics.dto.StatisticsSummaryResponse;
+import com.woongjin.survey.domain.statistics.excel.StatisticsExcelExporter;
 import com.woongjin.survey.domain.statistics.service.StatisticsQueryService;
 import com.woongjin.survey.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -26,7 +34,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StatisticsController {
 
+    private static final DateTimeFormatter FILENAME_TIMESTAMP =
+            DateTimeFormatter.ofPattern("yyyyMMdd-HHmm");
+
     private final StatisticsQueryService statisticsQueryService;
+    private final StatisticsExcelExporter statisticsExcelExporter;
 
     /**
      * 설문 기본정보 요약 조회 — 통계 페이지 상단 영역
@@ -74,5 +86,42 @@ public class StatisticsController {
                 "문항별 응답현황 조회 성공",
                 statisticsQueryService.getQuestionStatistics(surveyId)
         );
+    }
+
+    /**
+     * 설문 기본정보 요약 — 엑셀(.xlsx) 다운로드
+     * - 응답 본문: byte[] (xlsx 바이너리)
+     * - 파일명: 설문통계요약_{설문명}_{yyyyMMdd-HHmm}.xlsx
+     *   · 한글 안전하게 RFC 5987 형식 (filename* / UTF-8) 으로 전달
+     */
+    @GetMapping("/export/summary")
+    public ResponseEntity<byte[]> exportSummary(@PathVariable Long surveyId) {
+        StatisticsSummaryResponse summary = statisticsQueryService.getSummary(surveyId);
+        byte[] body = statisticsExcelExporter.exportSummary(summary);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        buildContentDisposition(summary.title()))
+                .body(body);
+    }
+
+    /**
+     * Content-Disposition 값 생성 (한글 파일명 안전 전달).
+     * - filename : ASCII 폴백 (구형 클라이언트 대비 고정 문자열)
+     * - filename*: RFC 5987 — UTF-8 퍼센트 인코딩 (모던 브라우저가 우선 채택)
+     */
+    private String buildContentDisposition(String surveyTitle) {
+        String filename = "설문통계요약_" + sanitize(surveyTitle)
+                + "_" + LocalDateTime.now().format(FILENAME_TIMESTAMP) + ".xlsx";
+        String encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8)
+                .replace("+", "%20");   // form-encoding 의 '+' → '%20' (RFC 3986 호환)
+        return "attachment; filename=\"statistics-summary.xlsx\"; filename*=UTF-8''" + encoded;
+    }
+
+    /** 파일명에 사용할 수 없는 문자 치환 (Windows/macOS 양쪽 안전). */
+    private String sanitize(String name) {
+        return name == null ? "" : name.replaceAll("[\\\\/:*?\"<>|\\r\\n]", "_");
     }
 }
