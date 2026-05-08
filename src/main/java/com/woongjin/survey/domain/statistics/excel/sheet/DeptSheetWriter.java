@@ -36,7 +36,7 @@ public class DeptSheetWriter {
         writeRows(sheet, styles, rates);
 
         sheet.createFreezePane(0, 1);
-        ExcelCells.autoSizeAll(sheet, HEADERS.size());
+        ExcelCells.autoSizeAll(sheet, HEADERS.size(), 12);
     }
 
     private void writeHeader(SXSSFSheet sheet, ExcelStyles styles) {

@@ -30,7 +30,7 @@ public class SummarySheetWriter {
         writeHeader(sheet, styles);
         writeFields(sheet, styles, s);
 
-        ExcelCells.autoSizeAll(sheet, COLUMN_COUNT);
+        ExcelCells.autoSizeAll(sheet, COLUMN_COUNT, 12);
     }
 
     private void writeHeader(SXSSFSheet sheet, ExcelStyles styles) {
