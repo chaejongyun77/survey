@@ -49,44 +49,30 @@ public class ExcelStyles {
 
     private static CellStyle header(Workbook wb) {
         XSSFCellStyle s = xssfBordered(wb);
-        Font f = wb.createFont();
-        f.setBold(true);
-        f.setFontHeightInPoints((short) 10);
-        setFontColor(wb, f, COLOR_WHITE);
-        s.setFont(f);
-        s.setFillForegroundColor(new XSSFColor(COLOR_HEADER_BG, null));
-        s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        s.setFont(createFont(wb, true, COLOR_WHITE));
+        setBackground(s, COLOR_HEADER_BG);
         s.setAlignment(HorizontalAlignment.CENTER);
         return s;
     }
 
     private static CellStyle key(Workbook wb) {
         XSSFCellStyle s = xssfBordered(wb);
-        Font f = wb.createFont();
-        f.setBold(true);
-        f.setFontHeightInPoints((short) 10);
-        setFontColor(wb, f, COLOR_TEXT_DARK);
-        s.setFont(f);
-        s.setFillForegroundColor(new XSSFColor(COLOR_KEY_BG, null));
-        s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        s.setFont(createFont(wb, true, COLOR_TEXT_DARK));
+        setBackground(s, COLOR_KEY_BG);
         s.setAlignment(HorizontalAlignment.LEFT);
         return s;
     }
 
     private static CellStyle value(Workbook wb) {
         XSSFCellStyle s = xssfBordered(wb);
-        Font f = wb.createFont();
-        f.setFontHeightInPoints((short) 10);
-        setFontColor(wb, f, COLOR_TEXT_DARK);
-        s.setFont(f);
+        s.setFont(createFont(wb, false, COLOR_TEXT_DARK));
         s.setAlignment(HorizontalAlignment.LEFT);
         return s;
     }
 
     private static CellStyle valueGray(Workbook wb) {
         XSSFCellStyle s = (XSSFCellStyle) value(wb);
-        s.setFillForegroundColor(new XSSFColor(COLOR_GRAY_BG, null));
-        s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        setBackground(s, COLOR_GRAY_BG);
         return s;
     }
 
@@ -108,6 +94,19 @@ public class ExcelStyles {
         s.setLeftBorderColor(border);
         s.setRightBorderColor(border);
         return s;
+    }
+
+    private static Font createFont(Workbook wb, boolean bold, byte[] color) {
+        Font f = wb.createFont();
+        f.setBold(bold);
+        f.setFontHeightInPoints((short) 10);
+        setFontColor(wb, f, color);
+        return f;
+    }
+
+    private static void setBackground(XSSFCellStyle s, byte[] color) {
+        s.setFillForegroundColor(new XSSFColor(color, null));
+        s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
     }
 
     /** SXSSFWorkbook → XSSFWorkbook 접근 (RGB 색상 적용에 필요) */
