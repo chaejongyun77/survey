@@ -30,37 +30,22 @@ public class ExcelStyles {
     private static final byte[] COLOR_TEXT_DARK  = hex(0x1F, 0x29, 0x37); // gray-900
     private static final byte[] COLOR_BORDER     = hex(0xD1, 0xD5, 0xDB); // gray-300
 
-    private final CellStyle title;
     private final CellStyle header;
     private final CellStyle key;
     private final CellStyle value;
     private final CellStyle valueGray;
 
     public ExcelStyles(Workbook wb) {
-        this.title     = title(wb);
         this.header    = header(wb);
         this.key       = key(wb);
         this.value     = value(wb);
         this.valueGray = valueGray(wb);
     }
 
-    public CellStyle title()     { return title; }
     public CellStyle header()    { return header; }
     public CellStyle key()       { return key; }
     public CellStyle value()     { return value; }
     public CellStyle valueGray() { return valueGray; }
-
-    private static CellStyle title(Workbook wb) {
-        XSSFCellStyle s = xssfBase(wb);
-        Font f = wb.createFont();
-        f.setBold(true);
-        f.setFontHeightInPoints((short) 13);
-        setFontColor(wb, f, COLOR_TEXT_DARK);
-        s.setFont(f);
-        s.setAlignment(HorizontalAlignment.LEFT);
-        s.setVerticalAlignment(VerticalAlignment.CENTER);
-        return s;
-    }
 
     private static CellStyle header(Workbook wb) {
         XSSFCellStyle s = xssfBordered(wb);
