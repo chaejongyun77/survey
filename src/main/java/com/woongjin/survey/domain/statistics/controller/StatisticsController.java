@@ -8,6 +8,7 @@ import com.woongjin.survey.domain.statistics.excel.StatisticsExcelExporter;
 import com.woongjin.survey.domain.statistics.service.StatisticsQueryService;
 import com.woongjin.survey.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +17,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -111,21 +111,12 @@ public class StatisticsController {
                 .body(body);
     }
 
-    /**
-     * Content-Disposition 값 생성 (한글 파일명 안전 전달).
-     * - filename : ASCII 폴백 (구형 클라이언트 대비 고정 문자열)
-     * - filename*: RFC 5987 — UTF-8 퍼센트 인코딩 (모던 브라우저가 우선 채택)
-     */
     private String buildContentDisposition(String surveyTitle) {
-        String filename = "설문통계_" + sanitize(surveyTitle)
-                + "_" + LocalDateTime.now().format(FILENAME_TIMESTAMP) + ".xlsx";
-        String encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8)
-                .replace("+", "%20");   // form-encoding 의 '+' → '%20' (RFC 3986 호환)
-        return "attachment; filename=\"statistics.xlsx\"; filename*=UTF-8''" + encoded;
-    }
-
-    /** 파일명에 사용할 수 없는 문자 치환 (Windows/macOS 양쪽 안전). */
-    private String sanitize(String name) {
-        return name == null ? "" : name.replaceAll("[\\\\/:*?\"<>|\\r\\n]", "_");
+        String safe = surveyTitle == null ? "" : surveyTitle.replaceAll("[\\\\/:*?\"<>|\\r\\n]", "_");
+        String filename = "설문통계_" + safe + "_" + LocalDateTime.now().format(FILENAME_TIMESTAMP) + ".xlsx";
+        return ContentDisposition.attachment()
+                .filename(filename, StandardCharsets.UTF_8)
+                .build()
+                .toString();
     }
 }
