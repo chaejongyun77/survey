@@ -4,11 +4,11 @@ import com.woongjin.survey.domain.statistics.dto.DeptResponseRateResponse;
 import com.woongjin.survey.domain.statistics.dto.QuestionStatisticsListResponse;
 import com.woongjin.survey.domain.statistics.dto.ResponseListResponse;
 import com.woongjin.survey.domain.statistics.dto.StatisticsSummaryResponse;
+import com.woongjin.survey.domain.statistics.excel.ExcelUtil;
 import com.woongjin.survey.domain.statistics.excel.StatisticsExcelExporter;
 import com.woongjin.survey.domain.statistics.service.StatisticsQueryService;
 import com.woongjin.survey.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +17,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -33,9 +30,6 @@ import java.util.List;
 @RequestMapping("/api/internal/v1/surveys/{surveyId}/statistics")
 @RequiredArgsConstructor
 public class StatisticsController {
-
-    private static final DateTimeFormatter FILENAME_TIMESTAMP =
-            DateTimeFormatter.ofPattern("yyyyMMdd-HHmm");
 
     private final StatisticsQueryService statisticsQueryService;
     private final StatisticsExcelExporter statisticsExcelExporter;
@@ -107,16 +101,7 @@ public class StatisticsController {
                 .contentType(MediaType.parseMediaType(
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        buildContentDisposition(summary.title()))
+                        ExcelUtil.attachmentHeader(summary.title()))
                 .body(body);
-    }
-
-    private String buildContentDisposition(String surveyTitle) {
-        String safe = surveyTitle == null ? "" : surveyTitle.replaceAll("[\\\\/:*?\"<>|\\r\\n]", "_");
-        String filename = "설문통계_" + safe + "_" + LocalDateTime.now().format(FILENAME_TIMESTAMP) + ".xlsx";
-        return ContentDisposition.attachment()
-                .filename(filename, StandardCharsets.UTF_8)
-                .build()
-                .toString();
     }
 }
