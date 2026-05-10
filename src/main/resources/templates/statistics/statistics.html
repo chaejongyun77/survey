@@ -23,11 +23,18 @@
   <!-- 헤더 -->
   <header class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-bold text-gray-900">설문 통계</h1>
-    <button @click="downloadStatisticsExcel()"
-            class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white
-                   hover:bg-gray-50 transition-colors">
-      엑셀 다운로드
-    </button>
+    <div class="flex items-center gap-2">
+      <button @click="openHistModal()"
+              class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white
+                     hover:bg-gray-50 transition-colors">
+        다운로드 이력
+      </button>
+      <button @click="downloadStatisticsExcel()"
+              class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white
+                     hover:bg-gray-50 transition-colors">
+        엑셀 다운로드
+      </button>
+    </div>
   </header>
 
   <!-- 탭 -->
@@ -337,6 +344,70 @@
     </section>
 
   </div><!-- /본문 -->
+
+  <!-- ─────────── 다운로드 이력 모달 ─────────── -->
+  <div x-show="hist.open"
+       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+       x-transition.opacity>
+    <div class="bg-white rounded-2xl w-full max-w-lg mx-4 flex flex-col"
+         style="max-height: 85vh;"
+         @click.stop>
+
+      <!-- 모달 헤더 -->
+      <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+        <h2 class="text-lg font-bold text-gray-900">이력 확인</h2>
+        <button @click="closeHistModal()"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100
+                       hover:bg-gray-200 text-gray-500 transition-colors">✕</button>
+      </div>
+
+      <!-- 테이블 헤더 -->
+      <div class="grid grid-cols-12 gap-2 text-xs text-gray-400 px-6 py-3 border-b border-gray-100">
+        <div class="col-span-1">No.</div>
+        <div class="col-span-3">이름</div>
+        <div class="col-span-4">팀 명</div>
+        <div class="col-span-4">날짜</div>
+      </div>
+
+      <!-- 무한스크롤 목록 -->
+      <div class="overflow-y-auto flex-1 px-6"
+           @scroll="onHistScroll($event)">
+
+        <!-- 빈 상태 -->
+        <div x-show="!hist.loading && hist.items.length === 0"
+             class="text-center py-16 text-gray-400 text-sm">
+          다운로드 이력이 없습니다.
+        </div>
+
+        <!-- 행 -->
+        <template x-for="(item, i) in hist.items" :key="i">
+          <div class="grid grid-cols-12 gap-2 items-center py-3.5 border-b border-gray-50 text-sm">
+            <div class="col-span-1 text-gray-400 text-xs" x-text="hist.totalCount - i"></div>
+            <div class="col-span-3">
+              <span class="px-2 py-0.5 bg-orange-50 text-orange-500 text-xs rounded"
+                    x-text="item.empName"></span>
+            </div>
+            <div class="col-span-4 text-orange-500 font-medium text-xs" x-text="item.deptName"></div>
+            <div class="col-span-4 text-gray-500 text-xs" x-text="formatHistDate(item.downloadedAt)"></div>
+          </div>
+        </template>
+
+        <!-- 로딩 -->
+        <div x-show="hist.loading" class="text-center py-4 text-gray-400 text-xs">
+          불러오는 중…
+        </div>
+      </div>
+
+      <!-- 닫기 -->
+      <div class="px-6 py-4 border-t border-gray-100 flex justify-end">
+        <button @click="closeHistModal()"
+                class="px-6 py-2.5 bg-orange-500 text-white text-sm font-medium rounded-lg
+                       hover:bg-orange-600 transition-colors">
+          닫기
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -364,6 +435,14 @@
       previewLimit: 50,
       questionStats: [],
       aggregatedAt: null,
+      hist: {
+        open: false,
+        loading: false,
+        items: [],
+        page: 0,
+        hasMore: true,
+        totalCount: 0
+      },
 
       async init() {
         try {
@@ -597,6 +676,51 @@
         }
         const ascii = header.match(/filename\s*=\s*"?([^";]+)"?/i);
         return ascii ? ascii[1] : null;
+      },
+
+      async openHistModal() {
+        this.hist.open = true;
+        if (this.hist.items.length === 0) await this.loadHist();
+      },
+
+      closeHistModal() {
+        this.hist.open = false;
+      },
+
+      async loadHist() {
+        if (this.hist.loading || !this.hist.hasMore) return;
+        this.hist.loading = true;
+        try {
+          const res = await axios.get(
+            `/api/internal/v1/surveys/${SVY_ID}/statistics/export/history`,
+            { params: { page: this.hist.page } }
+          );
+          const data = res.data.data;
+          if (this.hist.page === 0) this.hist.totalCount = data.totalCount;
+          this.hist.items.push(...data.content);
+          this.hist.hasMore = data.hasNext;
+          this.hist.page++;
+        } catch (e) {
+          console.error('[hist] 이력 조회 실패:', e);
+        } finally {
+          this.hist.loading = false;
+        }
+      },
+
+      onHistScroll(e) {
+        const el = e.target;
+        if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
+          this.loadHist();
+        }
+      },
+
+      /** "2026.03.25 10:00" 형태 */
+      formatHistDate(iso) {
+        if (!iso) return '';
+        const t = new Date(iso);
+        const pad = n => String(n).padStart(2, '0');
+        return `${t.getFullYear()}.${pad(t.getMonth()+1)}.${pad(t.getDate())} `
+             + `${pad(t.getHours())}:${pad(t.getMinutes())}`;
       }
     }
   }

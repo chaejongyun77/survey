@@ -6,6 +6,8 @@ import com.woongjin.survey.domain.statistics.dto.ResponseListResponse;
 import com.woongjin.survey.domain.statistics.dto.StatisticsSummaryResponse;
 import com.woongjin.survey.domain.statistics.excel.ExcelUtil;
 import com.woongjin.survey.domain.statistics.excel.StatisticsExcelExporter;
+import com.woongjin.survey.domain.statistics.excel.history.ExcelDownloadHistService;
+import com.woongjin.survey.domain.statistics.excel.history.ExcelDownloadHistSlice;
 import com.woongjin.survey.domain.statistics.service.StatisticsQueryService;
 import com.woongjin.survey.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -15,17 +17,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/**
- * 설문 통계 페이지 — REST API
- *
- * [경로 규약]
- * - 사내 직원(관리자/팀장 등) 전용 → /api/internal 하위로 배치
- * - 통계는 설문 단위로 묶이므로 /surveys/{surveyId}/statistics/* 형태
- */
 @RestController
 @RequestMapping("/api/internal/v1/surveys/{surveyId}/statistics")
 @RequiredArgsConstructor
@@ -33,10 +29,8 @@ public class StatisticsController {
 
     private final StatisticsQueryService statisticsQueryService;
     private final StatisticsExcelExporter statisticsExcelExporter;
+    private final ExcelDownloadHistService excelDownloadHistService;
 
-    /**
-     * 설문 기본정보 요약 조회 — 통계 페이지 상단 영역
-     */
     @GetMapping("/summary")
     public ApiResponse<StatisticsSummaryResponse> getSummary(@PathVariable Long surveyId) {
         return ApiResponse.success(
@@ -45,9 +39,6 @@ public class StatisticsController {
         );
     }
 
-    /**
-     * 조직(부서)별 응답률 조회 — "응답 결과 조회" 탭 하단 영역
-     */
     @GetMapping("/depts")
     public ApiResponse<List<DeptResponseRateResponse>> getDeptResponseRates(@PathVariable Long surveyId) {
         return ApiResponse.success(
@@ -56,11 +47,6 @@ public class StatisticsController {
         );
     }
 
-    /**
-     * 응답자별 문항답변 — 최근 N건 미리보기 조회
-     * - 화면 미리보기용 (현재 50건)
-     * - 전체 응답은 엑셀 다운로드 API 로 별도 제공
-     */
     @GetMapping("/responses")
     public ApiResponse<ResponseListResponse> getResponseList(@PathVariable Long surveyId) {
         return ApiResponse.success(
@@ -69,11 +55,6 @@ public class StatisticsController {
         );
     }
 
-    /**
-     * 문항별 응답현황 — "문항별 응답현황" 탭
-     * - 배치가 집계한 통계 + 문항/선택지 텍스트를 합쳐 화면용 형태로 반환
-     * - 배치가 아직 안 돌았으면 questions = []
-     */
     @GetMapping("/questions")
     public ApiResponse<QuestionStatisticsListResponse> getQuestionStatistics(@PathVariable Long surveyId) {
         return ApiResponse.success(
@@ -83,7 +64,7 @@ public class StatisticsController {
     }
 
     /**
-     * 통계 엑셀 다운로드 — 현재까지 구현된 시트들을 단일 .xlsx 로 묶어 반환.
+     * 통계 엑셀 다운로드
      * - 시트1: 설문 기본정보 요약
      * - 시트2: 조직별 응답현황
      * - 시트3: 응답자별 문항 답변 (전체)
@@ -96,6 +77,7 @@ public class StatisticsController {
         ResponseListResponse respondents = statisticsQueryService.getResponseListForExcel(surveyId);
         QuestionStatisticsListResponse questionStats = statisticsQueryService.getQuestionStatistics(surveyId);
         byte[] body = statisticsExcelExporter.exportAll(summary, depts, respondents, questionStats);
+        excelDownloadHistService.save(surveyId);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(
@@ -103,5 +85,16 @@ public class StatisticsController {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ExcelUtil.attachmentHeader(summary.title()))
                 .body(body);
+    }
+
+    /** 엑셀 다운로드 이력 조회 - 무한스크롤용 */
+    @GetMapping("/export/history")
+    public ApiResponse<ExcelDownloadHistSlice> getExcelDownloadHist(
+            @PathVariable Long surveyId,
+            @RequestParam(defaultValue = "0") int page) {
+        return ApiResponse.success(
+                "엑셀 다운로드 이력 조회 성공",
+                excelDownloadHistService.getHist(surveyId, page)
+        );
     }
 }
