@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -33,6 +34,12 @@ import java.util.List;
  *  - chunk(100) = "Processor 결과 100건이 모이면 Writer 호출 + 트랜잭션 커밋"
  *  - 여기서 한 건 = 한 설문의 통계 (List&lt;QuestionStat&gt;)
  *  - 진행중 설문이 100개 미만이면 한 번에 끝남
+ *
+ * [Reader @StepScope]
+ *  activeSurveyIdReader 는 @StepScope Bean 으로 분리.
+ *  private 메서드로 두면 앱 기동 시점에 한 번만 실행되어 캐싱되므로
+ *  2회차 실행부터 Reader 가 소진된 상태로 아무것도 처리되지 않는 문제가 생김.
+ *  @StepScope 로 선언하면 Step 실행마다 새 인스턴스가 생성되어 매번 DB 를 다시 조회함.
  */
 @Slf4j
 @Configuration
@@ -69,7 +76,9 @@ public class StatisticsBatchConfig {
      * 진행중 설문 수가 수십 개 수준이라 메모리 부담 없음.
      * (수만 개 단위라면 JpaPagingItemReader 등으로 페이징 필요)
      */
-    private ItemReader<Long> activeSurveyIdReader() {
+    @Bean
+    @StepScope
+    public ItemReader<Long> activeSurveyIdReader() {
         List<Long> ids = surveyRepository.findActiveSurveyIds();
         log.info("[stat-batch] 집계 대상 설문 수: {}", ids.size());
         return new ListItemReader<>(ids);

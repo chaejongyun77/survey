@@ -166,9 +166,21 @@
 
       <div class="flex items-center justify-between mb-4 px-1">
         <h2 class="text-base font-semibold text-gray-900">문항별 응답현황</h2>
-        <p class="text-xs text-gray-400" x-show="aggregatedAt">
-          최종 집계: <span x-text="formatAggregatedAt(aggregatedAt)"></span>
-        </p>
+        <div class="flex items-center gap-3">
+          <p class="text-xs text-gray-400" x-show="aggregatedAt">
+            최종 집계: <span x-text="formatAggregatedAt(aggregatedAt)"></span>
+          </p>
+          <button th:if="${#authorization.expression('hasAnyAuthority(''ADMIN'',''SUPER_ADMIN'')')}"
+                  @click="runBatchManually()"
+                  :disabled="ui.batchRunning"
+                  class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                         border border-orange-200 text-orange-500 bg-white
+                         hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            <span x-show="ui.batchRunning"
+                  class="w-3 h-3 border border-orange-400 border-t-transparent rounded-full animate-spin"></span>
+            <span x-text="ui.batchRunning ? '집계 중…' : '수동 집계'"></span>
+          </button>
+        </div>
       </div>
 
       <!-- 로딩 -->
@@ -336,7 +348,8 @@
         respondentsLoading: false,
         respondentsLoaded: false,
         questionsLoading: false,
-        questionsLoaded: false
+        questionsLoaded: false,
+        batchRunning: false
       },
       summary: {
         title: '', site: '', beginDate: '', endDate: '',
@@ -415,6 +428,21 @@
           alert('문항별 응답현황을 불러오지 못했습니다.');
         } finally {
           this.ui.questionsLoading = false;
+        }
+      },
+
+      /** 수동 집계 실행 */
+      async runBatchManually() {
+        this.ui.batchRunning = true;
+        try {
+          await axios.post('/api/internal/v1/admin/batch/statistics/run', null, { timeout: 60000 });
+          this.ui.questionsLoaded = false;
+          await this.loadQuestionStatistics();
+        } catch (e) {
+          console.error('[statistics] 수동 집계 실패:', e);
+          alert('집계 실행에 실패했습니다.');
+        } finally {
+          this.ui.batchRunning = false;
         }
       },
 

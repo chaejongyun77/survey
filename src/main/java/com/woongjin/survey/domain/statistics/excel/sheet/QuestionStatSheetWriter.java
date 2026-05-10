@@ -44,7 +44,7 @@ public class QuestionStatSheetWriter {
         if (questions.isEmpty()) {
             ExcelCells.setCell(sheet.createRow(0), 0,
                     "집계된 통계 데이터가 없습니다. 배치 실행 후 다시 시도하세요.", styles.value());
-            ExcelCells.autoSizeAll(sheet, COLUMN_COUNT);
+            ExcelCells.autoSizeAll(sheet, COLUMN_COUNT,12);
             return;
         }
 
@@ -54,7 +54,7 @@ public class QuestionStatSheetWriter {
             sheet.createRow(rowIdx++); // 문항 간 빈 행
         }
 
-        ExcelCells.autoSizeAll(sheet, COLUMN_COUNT);
+        ExcelCells.autoSizeAll(sheet, COLUMN_COUNT,12);
     }
 
     /** 문항 블록 1개 작성 → 다음 rowIdx 반환 */
