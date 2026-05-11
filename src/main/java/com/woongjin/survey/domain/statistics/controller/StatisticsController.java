@@ -1,5 +1,6 @@
 package com.woongjin.survey.domain.statistics.controller;
 
+import com.woongjin.survey.domain.auth.infra.UserPrincipal;
 import com.woongjin.survey.domain.statistics.dto.DeptResponseRateResponse;
 import com.woongjin.survey.domain.statistics.dto.QuestionStatisticsListResponse;
 import com.woongjin.survey.domain.statistics.dto.ResponseListResponse;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -71,13 +73,15 @@ public class StatisticsController {
      * - 파일명: 설문통계_{설문명}_{yyyyMMdd-HHmm}.xlsx (RFC 5987 / UTF-8 인코딩)
      */
     @GetMapping("/export")
-    public ResponseEntity<byte[]> exportStatistics(@PathVariable Long surveyId) {
+    public ResponseEntity<byte[]> exportStatistics(
+            @PathVariable Long surveyId,
+            @AuthenticationPrincipal UserPrincipal principal) {
         StatisticsSummaryResponse summary = statisticsQueryService.getSummary(surveyId);
         List<DeptResponseRateResponse> depts = statisticsQueryService.getDeptResponseRates(surveyId);
         ResponseListResponse respondents = statisticsQueryService.getResponseListForExcel(surveyId);
         QuestionStatisticsListResponse questionStats = statisticsQueryService.getQuestionStatistics(surveyId);
         byte[] body = statisticsExcelExporter.exportAll(summary, depts, respondents, questionStats);
-        excelDownloadHistService.save(surveyId);
+        excelDownloadHistService.save(surveyId, principal.getEmpId());
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(
