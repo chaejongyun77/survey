@@ -22,8 +22,7 @@ public class ExcelDownloadHistService {
     @Transactional(readOnly = true)
     public ExcelDownloadHistSlice getHist(Long surveyId, int page) {
         Slice<ExcelDownloadHistResponse> slice = histRepository
-                .findBySurveyIdOrderByCreatedDateDesc(surveyId, PageRequest.of(page, PAGE_SIZE))
-                .map(h -> new ExcelDownloadHistResponse(h.getEmpName(), h.getDeptName(), h.getCreatedDate()));
+                .findBySurveyIdOrderByCreatedDateDesc(surveyId, PageRequest.of(page, PAGE_SIZE));
 
         long totalCount = (page == 0) ? histRepository.countBySurveyId(surveyId) : -1;
         return new ExcelDownloadHistSlice(slice.getContent(), slice.hasNext(), totalCount);

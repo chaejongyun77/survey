@@ -1,6 +1,5 @@
 package com.woongjin.survey.domain.statistics.excel.history;
 
-import com.woongjin.survey.domain.employee.domain.Employee;
 import com.woongjin.survey.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -13,7 +12,9 @@ import lombok.NoArgsConstructor;
  * [성격]
  * - append-only. 수정 없음.
  * - 누가(FRST_CRTN_ID) 언제(FRST_CRTN_DT) 어떤 설문(SVY_ID)을 다운로드했는지 기록.
- * - employee: FRST_CRTN_ID(BaseEntity) 를 FK 로 조인 — 이름/부서 조회용.
+ * - 다운로더 식별은 BaseEntity.createdBy(@CreatedBy) 로 자동 세팅됨.
+ * - 사원명/부서명은 이력 조회 시 repository 쿼리에서 emp_tb join 으로 가져옴
+ *   (같은 컬럼에 @JoinColumn 을 또 걸면 @CreatedBy 와 충돌해 INSERT 가 깨짐).
  */
 @Getter
 @Entity
@@ -28,18 +29,6 @@ public class ExcelDownloadHist extends BaseEntity {
 
     @Column(name = "SVY_ID", nullable = false)
     private Long surveyId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "FRST_CRTN_ID", insertable = false, updatable = false)
-    private Employee employee;
-
-    public String getEmpName() {
-        return employee != null ? employee.getEmpName() : null;
-    }
-
-    public String getDeptName() {
-        return employee != null ? employee.getDepartment().getDeptName() : null;
-    }
 
     public static ExcelDownloadHist of(Long surveyId) {
         ExcelDownloadHist hist = new ExcelDownloadHist();
