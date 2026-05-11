@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/popup-layout}">
+<head>
+    <title>이력 확인</title>
+</head>
+<body>
+
+<th:block layout:fragment="popup-title">알림 발송 이력</th:block>
+
+<div layout:fragment="content" x-data="notiHistories">
+
+    <div class="border border-base-300 rounded-xl mb-4 overflow-hidden">
+        <table class="table table-sm w-full">
+            <thead class="bg-base-200 text-base-content/60 text-xs">
+            <tr>
+                <th class="font-medium">설문 ID</th>
+                <th class="font-medium">설문 명</th>
+                <th class="font-medium">알림 유형</th>
+                <th class="font-medium">발송 시간</th>
+                <th class="font-medium">발송 개수</th>
+            </tr>
+            </thead>
+            <tbody>
+            <template x-for="(row,idx) in histories" :key="idx">
+                <tr class="border-t border-base-200">
+                    <td class="text-base-content/60 text-sm" x-text="row.surveyId"></td>
+                    <td class="font-semibold text-sm" x-text="row.surveySubject"></td>
+                    <td>
+                        <span class="text-sm" x-text="formatNotificationType(row.notificationType)"></span>
+                    </td>
+                                    <td class="text-sm" x-text="formatDate(row.sendDate)"></td>
+                <td class="text-sm" x-text="row.sendCount"></td>
+            </tr>
+        </template>
+        </tbody>
+    </table>
+</div>
+
+<!-- 페이지네이션 -->
+<div class="flex gap-1 mt-6 justify-center" x-show="histories.length > 0">
+    <button class="btn btn-sm btn-ghost rounded-lg"
+            :class="currentPage === 0 ? 'btn-disabled' : ''"
+            @click="goToPage(currentPage - 1)">«
+    </button>
+    <template x-for="page in pageRange()" :key="page">
+        <button class="btn btn-sm rounded-lg w-9"
+                :class="page === currentPage ? 'btn-primary' : 'btn-ghost'"
+                @click="goToPage(page)"
+                x-text="page + 1"></button>
+    </template>
+    <button class="btn btn-sm btn-ghost rounded-lg"
+            :class="currentPage >= totalPages - 1 ? 'btn-disabled' : ''"
+            @click="goToPage(currentPage + 1)">»
+    </button>
+</div>
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('notiHistories', () => ({
+            histories: [],
+            currentPage: 0,
+            totalPages: 1,
+            notificationTypes: {
+                SURVEY_START: '설문 시작',
+                SURVEY_APPROVE: '설문 승인',
+                SURVEY_REMIND: '설문 리마인드'
+            },
+
+            async init() {
+                const params = {};
+
+                params['page'] = this.currentPage;
+                params['size'] = 10;
+
+                const res = await api.get('/v1/admin/notifications/histories', {params});
+                const page = res.data.data;
+                this.histories = page.contents;
+                this.totalPages = page.totalPages ?? 1;
+            },
+
+                        formatNotificationType(type) {
+                return this.notificationTypes[type];
+            },
+
+            formatDate(date) {
+                return date.replace("T", " ");
+            },
+
+            async goToPage(page) {
+                if (page < 0 || page >= this.totalPages) return;
+                this.currentPage = page;
+                await this.init();
+            },
+
+            pageRange() {
+                const pageSize = 5;
+                let start = Math.floor(this.currentPage / pageSize) * pageSize;
+                let end = Math.min(start + pageSize, this.totalPages);
+
+                return Array.from({ length: end - start }, (_, i) => start + i);
+            },
+        }));
+    });
+</script>
+</div>
+
+</body>
+</html>
