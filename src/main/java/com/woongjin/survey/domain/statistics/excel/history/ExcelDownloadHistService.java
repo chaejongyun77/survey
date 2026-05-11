@@ -1,7 +1,5 @@
 package com.woongjin.survey.domain.statistics.excel.history;
 
-import com.woongjin.survey.domain.employee.domain.Employee;
-import com.woongjin.survey.domain.employee.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
@@ -15,12 +13,10 @@ public class ExcelDownloadHistService {
     private static final int PAGE_SIZE = 10;
 
     private final ExcelDownloadHistRepository histRepository;
-    private final EmployeeRepository employeeRepository;
 
     @Transactional
-    public void save(Long surveyId, Long empId) {
-        Employee employee = employeeRepository.getReferenceById(empId);
-        histRepository.save(ExcelDownloadHist.of(surveyId, employee));
+    public void save(Long surveyId) {
+        histRepository.save(ExcelDownloadHist.of(surveyId));
     }
 
     @Transactional(readOnly = true)
