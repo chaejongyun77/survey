@@ -1,6 +1,7 @@
 package com.woongjin.survey.domain.statistics.excel.history;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
@@ -26,5 +27,11 @@ public class ExcelDownloadHistService {
 
         long totalCount = (page == 0) ? histRepository.countBySurveyId(surveyId) : -1;
         return new ExcelDownloadHistSlice(slice.getContent(), slice.hasNext(), totalCount);
+    }
+
+    /** 글로벌 어드민 — 모든 설문의 다운로드 이력 페이징 조회 */
+    @Transactional(readOnly = true)
+    public Page<ExcelDownloadHistListQueryResponse> getAllHistories(ExcelDownloadHistListQueryRequest req) {
+        return histRepository.findAllHistories(req.toPageable());
     }
 }
