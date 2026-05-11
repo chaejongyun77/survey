@@ -177,8 +177,7 @@
           <p class="text-xs text-gray-400" x-show="aggregatedAt">
             최종 집계: <span x-text="formatAggregatedAt(aggregatedAt)"></span>
           </p>
-          <button th:if="${#authorization.expression('hasAnyAuthority(''ADMIN'',''SUPER_ADMIN'')')}"
-                  @click="runBatchManually()"
+          <button @click="runBatchManually()"
                   :disabled="ui.batchRunning"
                   class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
                          border border-orange-200 text-orange-500 bg-white
