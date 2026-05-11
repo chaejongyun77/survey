@@ -7,7 +7,6 @@ import com.woongjin.survey.domain.statistics.dto.StatisticsSummaryResponse;
 import com.woongjin.survey.domain.statistics.excel.ExcelUtil;
 import com.woongjin.survey.domain.statistics.excel.StatisticsExcelExporter;
 import com.woongjin.survey.domain.statistics.excel.history.ExcelDownloadHistService;
-import com.woongjin.survey.domain.statistics.excel.history.ExcelDownloadHistSlice;
 import com.woongjin.survey.domain.statistics.service.StatisticsQueryService;
 import com.woongjin.survey.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -85,16 +83,5 @@ public class StatisticsController {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ExcelUtil.attachmentHeader(summary.title()))
                 .body(body);
-    }
-
-    /** 엑셀 다운로드 이력 조회 - 무한스크롤용 */
-    @GetMapping("/export/history")
-    public ApiResponse<ExcelDownloadHistSlice> getExcelDownloadHist(
-            @PathVariable Long surveyId,
-            @RequestParam(defaultValue = "0") int page) {
-        return ApiResponse.success(
-                "엑셀 다운로드 이력 조회 성공",
-                excelDownloadHistService.getHist(surveyId, page)
-        );
     }
 }
