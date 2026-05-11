@@ -1,3 +1,4 @@
+/*
 package com.woongjin.survey.domain.noti;
 
 @Getter
@@ -15,4 +16,4 @@ public class NotificationRequest {
     private final Long referenceId;
 
     private final Map<String, Object> variables;
-}
+}*/

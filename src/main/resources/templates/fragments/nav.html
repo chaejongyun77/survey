@@ -9,19 +9,22 @@
         <a href="/surveys/admin/surveys/" class="text-lg font-bold tracking-tight whitespace-nowrap">웅진씽크빅 설문시스템</a>
     </div>
     <div class="navbar-center">
-        <ul class="flex gap-1" sec:authorize="hasAnyAuthority('SUPER_ADMIN')">
-            <li onclick="window.open('/surveys/admin/histories/notification', '알림 발송 이력', 'width=600,height=800')">
+        <ul class="flex gap-1">
+            <!-- 알림 이력 페이지 아직 미구현 -->
+            <!--<li class="cursor-pointer hover:underline"
+                onclick="window.open('/surveys/admin/histories/notification', '알림 발송 이력', 'width=600,height=800')">
                 알림 이력 관리
-            </li>
-            <li onclick="window.open('/surveys/admin/histories/excel', '엑셀 다운로드 이력', 'width=900,height=800')">
+            </li>-->
+            <li class="cursor-pointer hover:underline"
+                onclick="window.open('/surveys/admin/histories/excel', '엑셀 다운로드 이력', 'width=900,height=800')">
                 엑셀 이력 관리
             </li>
         </ul>
     </div>
     <div class="navbar-end gap-3">
-        <span class="text-sm text-primary-content/80"
+        <!--<span class="text-sm text-primary-content/80"
               th:text="|${#authentication.principal.empNm}(${#authentication.principal.username})|">
-        </span>
+        </span>-->
     </div>
 </nav>
 </body>

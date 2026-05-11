@@ -1,7 +1,9 @@
 package com.woongjin.survey.domain.noti;
 
 
+import org.springframework.data.domain.Page;
 
+import java.util.List;
 
 public record PageQueryResponse<T>(
         long totalElements,

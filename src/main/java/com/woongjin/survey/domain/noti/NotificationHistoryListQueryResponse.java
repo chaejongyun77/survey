@@ -1,4 +1,9 @@
+/*
 package com.woongjin.survey.domain.noti;
+
+import lombok.Builder;
+
+import java.time.LocalDateTime;
 
 @Builder
 public record NotificationHistoryListQueryResponse(
@@ -18,4 +23,4 @@ public record NotificationHistoryListQueryResponse(
                 .sendCount(history.getSendCount())
                 .build();
     }
-}
+}*/

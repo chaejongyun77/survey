@@ -1,5 +1,8 @@
 package com.woongjin.survey.domain.noti;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+
 public class PageQueryRequest {
     private final int page;
     private final int size;

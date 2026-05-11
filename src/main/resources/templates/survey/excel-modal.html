@@ -68,7 +68,7 @@
                     params['page'] = this.currentPage;
                     params['size'] = 10;
 
-                    const res = await api.get('/v1/admin/excel-downloads/histories', {params});
+                    const res = await api.get('/excel-downloads/histories', {params});
                     const page = res.data.data;
                     this.histories = page.contents;
                     this.totalPages = page.totalPages ?? 1;

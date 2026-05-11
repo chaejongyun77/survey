@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title layout:title-pattern="$CONTENT_TITLE">팝업</title>
+
+    <!-- Tailwind + DaisyUI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet"/>
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- axios + 공통 api 인스턴스 -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        // 어드민 API 베이스 경로 — 컨트롤러 prefix 와 동일
+        const api = axios.create({
+            baseURL: '/api/external/v1/admin',
+            withCredentials: true,
+        });
+    </script>
+</head>
+<body class="bg-base-100 text-base-content p-6">
+
+<h2 class="text-lg font-semibold mb-4">
+    <th:block layout:fragment="popup-title">팝업</th:block>
+</h2>
+
+<div layout:fragment="content">
+    <!-- 자식 페이지의 content fragment 가 여기로 들어옴 -->
+</div>
+
+</body>
+</html>
