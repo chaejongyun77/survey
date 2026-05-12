@@ -15,7 +15,7 @@
         <table class="table table-sm w-full">
             <thead class="bg-base-200 text-base-content/60 text-xs">
             <tr>
-                <th class="font-medium">설문 ID</th>
+                <th class="font-medium">No</th>
                 <th class="font-medium">설문 명</th>
                 <th class="font-medium">사번</th>
                 <th class="font-medium">이름</th>
@@ -26,7 +26,7 @@
             <tbody>
             <template x-for="(row,idx) in histories" :key="idx">
                 <tr class="border-t border-base-200">
-                    <td class="text-base-content/60 text-sm" x-text="row.surveyId"></td>
+                    <td class="text-base-content/60 text-sm" x-text="totalElements - (currentPage * pageSize) - idx"></td>
                     <td class="font-semibold text-sm" x-text="row.surveyTitle"></td>
                     <td class="text-sm" x-text="row.empNo"></td>
                     <td class="text-sm" x-text="row.empName"></td>
@@ -62,16 +62,19 @@
                 histories: [],
                 currentPage: 0,
                 totalPages: 1,
+                totalElements: 0,
+                pageSize: 10,
 
                 async init() {
                     const params = {};
                     params['page'] = this.currentPage;
-                    params['size'] = 10;
+                    params['size'] = this.pageSize;
 
                     const res = await api.get('/excel-downloads/histories', {params});
                     const page = res.data.data;
                     this.histories = page.contents;
                     this.totalPages = page.totalPages ?? 1;
+                    this.totalElements = page.totalElements ?? 0;
                 },
 
                 formatDate(date) {
