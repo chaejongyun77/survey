@@ -34,7 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -153,30 +152,24 @@ public class StatisticsQueryService {
                 ? List.of()
                 : questionBranchRepository.findByParentQuestionIdIn(questionIds);
 
-        // childQuestionId → parentQuestionId 역색인
-        Map<Long, Long> parentByChildId = branches.stream()
+        // ID → Question 조회용
+        Map<Long, Question> questionById = questions.stream()
+                .collect(Collectors.toMap(Question::getId, q -> q));
+
+        // parentId → 자식 Question (1:1)
+        Map<Long, Question> childByParentId = branches.stream()
                 .collect(Collectors.toMap(
-                        QuestionBranch::getChildQuestionId,
                         QuestionBranch::getParentQuestionId,
-                        (a, b) -> a   // 동일 자식이 복수 부모를 가지는 경우 첫 번째 사용
+                        b -> questionById.get(b.getChildQuestionId())
                 ));
 
-        // 자식 문항 ID 집합
-        Set<Long> childIds = parentByChildId.keySet();
+        // 자식 문항 ID 집합 — 메인 루프에서 스킵 판단용
+        Set<Long> childIds = branches.stream()
+                .map(QuestionBranch::getChildQuestionId)
+                .collect(Collectors.toSet());
 
         Map<Long, QuestionStat> statByQuestionId = stats.stream()
                 .collect(Collectors.toMap(QuestionStat::getQuestionId, s -> s));
-
-        // 부모 문항 기준으로 순서 재구성:
-        // sortOrder 순 순회 → 부모 문항이면 바로 추가 + 해당 부모의 자식 문항들을 뒤에 삽입
-        // 자식 문항은 부모 처리 시 이미 삽입되므로 개별 순회에서 스킵
-        Map<Long, List<Question>> childrenByParentId = new LinkedHashMap<>();
-        for (Question q : questions) {
-            Long parentId = parentByChildId.get(q.getId());
-            if (parentId != null) {
-                childrenByParentId.computeIfAbsent(parentId, k -> new ArrayList<>()).add(q);
-            }
-        }
 
         List<QuestionStatisticsResponse> result = new ArrayList<>(questions.size());
         for (Question q : questions) {
@@ -185,9 +178,9 @@ public class StatisticsQueryService {
             QuestionStat stat = statByQuestionId.get(q.getId());
             if (stat != null) result.add(toResponse(q, stat));
 
-            // 이 부모에 달린 자식 문항들을 바로 뒤에 삽입
-            List<Question> children = childrenByParentId.getOrDefault(q.getId(), List.of());
-            for (Question child : children) {
+            // 이 부모의 자식 문항을 바로 뒤에 삽입
+            Question child = childByParentId.get(q.getId());
+            if (child != null) {
                 QuestionStat childStat = statByQuestionId.get(child.getId());
                 if (childStat != null) result.add(toResponse(child, childStat));
             }
