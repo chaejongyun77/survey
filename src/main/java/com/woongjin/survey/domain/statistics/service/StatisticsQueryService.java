@@ -87,7 +87,7 @@ public class StatisticsQueryService {
             throw new BusinessException(ErrorCode.SURVEY_NOT_FOUND);
         }
 
-        List<QuestionMetaDto> questions = statisticsRepository.findQuestionsWithItems(surveyId);
+        List<QuestionMetaDto> questions = reorderByBranch(statisticsRepository.findQuestionsWithItems(surveyId));
 
         List<RespondentAnswerDto> responses =
                 statisticsRepository.findRecentResponses(surveyId, RESPONSE_PREVIEW_LIMIT);
@@ -110,11 +110,43 @@ public class StatisticsQueryService {
             throw new BusinessException(ErrorCode.SURVEY_NOT_FOUND);
         }
 
-        List<QuestionMetaDto> questions = statisticsRepository.findQuestionsWithItems(surveyId);
+        List<QuestionMetaDto> questions = reorderByBranch(statisticsRepository.findQuestionsWithItems(surveyId));
         List<RespondentAnswerDto> responses = statisticsRepository.findRecentResponses(surveyId, Integer.MAX_VALUE);
         int totalCount = responses.size();
 
         return new ResponseListResponse(questions, responses, totalCount, totalCount);
+    }
+
+    /** 조건분기 자식 문항을 부모 바로 뒤로 재배치 */
+    private List<QuestionMetaDto> reorderByBranch(List<QuestionMetaDto> questions) {
+        List<Long> questionIds = questions.stream().map(QuestionMetaDto::questionId).toList();
+        List<QuestionBranch> branches = questionIds.isEmpty()
+                ? List.of()
+                : questionBranchRepository.findByParentQuestionIdIn(questionIds);
+
+        if (branches.isEmpty()) return questions;
+
+        Map<Long, QuestionMetaDto> questionById = questions.stream()
+                .collect(Collectors.toMap(QuestionMetaDto::questionId, q -> q));
+
+        Map<Long, QuestionMetaDto> childByParentId = branches.stream()
+                .collect(Collectors.toMap(
+                        QuestionBranch::getParentQuestionId,
+                        b -> questionById.get(b.getChildQuestionId())
+                ));
+
+        Set<Long> childIds = branches.stream()
+                .map(QuestionBranch::getChildQuestionId)
+                .collect(Collectors.toSet());
+
+        List<QuestionMetaDto> result = new ArrayList<>(questions.size());
+        for (QuestionMetaDto q : questions) {
+            if (childIds.contains(q.questionId())) continue;
+            result.add(q);
+            QuestionMetaDto child = childByParentId.get(q.questionId());
+            if (child != null) result.add(child);
+        }
+        return result;
     }
 
     /**
