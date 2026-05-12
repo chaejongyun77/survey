@@ -1,6 +1,7 @@
 package com.woongjin.survey.domain.statistics.excel.history;
 
 import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.PathBuilder;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -39,7 +40,7 @@ public class ExcelDownloadHistRepositoryImpl implements ExcelDownloadHistReposit
     public Page<ExcelDownloadHistListProjection> findAllPage(Pageable pageable) {
 
         List<ExcelDownloadHistListProjection> content = queryFactory
-                .select(new QExcelDownloadHistListProjection(
+                .select(Projections.constructor(ExcelDownloadHistListProjection.class,
                         hist.surveyId,
                         svy.title,
                         emp.empNo,

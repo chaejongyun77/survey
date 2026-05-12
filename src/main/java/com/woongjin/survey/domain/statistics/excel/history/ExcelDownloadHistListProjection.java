@@ -1,7 +1,5 @@
 package com.woongjin.survey.domain.statistics.excel.history;
 
-import com.querydsl.core.annotations.QueryProjection;
-
 import java.time.LocalDateTime;
 
 /**
@@ -15,7 +13,4 @@ public record ExcelDownloadHistListProjection(
         String empName,
         String deptName,
         LocalDateTime createdDate
-) {
-    @QueryProjection
-    public ExcelDownloadHistListProjection { }
-}
+) { }
