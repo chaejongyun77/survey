@@ -3,6 +3,7 @@ package com.woongjin.survey.domain.survey.repository;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import com.woongjin.survey.domain.survey.domain.QAnswer;
 import com.woongjin.survey.domain.survey.domain.QQuestion;
 import com.woongjin.survey.domain.survey.domain.QSurvey;
 import com.woongjin.survey.domain.survey.domain.QSurveyTargetPerson;
@@ -62,12 +63,21 @@ public class SurveyRepositoryImpl implements SurveyRepositoryCustom {
 
         QSurvey s              = QSurvey.survey;
         QSurveyTargetPerson tp = QSurveyTargetPerson.surveyTargetPerson;
+        QAnswer a              = QAnswer.answer;
 
         Long surveyId = queryFactory
                 .select(s.id)
                 .from(s)
                 .join(tp).on(tp.survey.id.eq(s.id).and(tp.employee.id.eq(empId)))
-                .where(isActiveSurvey(s, LocalDateTime.now()))
+                .where(
+                        isActiveSurvey(s, LocalDateTime.now()),
+                        com.querydsl.jpa.JPAExpressions
+                                .selectOne()
+                                .from(a)
+                                .where(a.surveyId.eq(s.id).and(a.empId.eq(empId)))
+                                .notExists()
+                )
+                .orderBy(s.enforced.desc(), s.endDate.asc())
                 .fetchFirst();
 
         return Optional.ofNullable(surveyId);
