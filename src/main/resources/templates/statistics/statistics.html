@@ -130,41 +130,59 @@
         <div class="col-span-2 text-right">응답수</div>
       </div>
 
-      <!-- 부서별 행 -->
+      <!-- 부서별 행 — init() 에서 flatDeptRows 로 미리 평탄화. 자식 행은 x-show 로 가시성 제어. -->
       <div class="divide-y divide-gray-50">
-        <template x-for="d in deptRates" :key="d.deptId">
-          <div class="grid grid-cols-12 gap-3 items-center px-2 py-3.5">
-            <!-- 조직명 -->
-            <div class="col-span-2 text-sm text-gray-700 font-medium" x-text="d.deptName"></div>
+        <template x-for="row in flatDeptRows" :key="row._kind + '-' + row.deptId">
+          <div class="grid grid-cols-12 gap-3 items-center px-2"
+               :class="row._kind === 'parent'
+                       ? (row.children && row.children.length > 0 ? 'py-3.5 cursor-pointer hover:bg-gray-50' : 'py-3.5')
+                       : 'py-2.5 bg-gray-50/40'"
+               x-show="row._kind === 'parent' || isDeptExpanded(row._parentDeptId)"
+               @click="onRowClick(row)">
+
+            <!-- 조직명 (+ 부모일 때 펼치기 아이콘) -->
+            <div :class="row._kind === 'parent'
+                         ? 'col-span-2 text-sm text-gray-700 font-semibold flex items-center gap-1'
+                         : 'col-span-2 pl-6 text-xs text-gray-500'">
+              <span class="text-xs text-gray-400 w-3"
+                    x-text="(row._kind === 'parent' && row.children && row.children.length > 0)
+                            ? (isDeptExpanded(row.deptId) ? '▼' : '▶')
+                            : ''"></span>
+              <span x-text="row.deptName"></span>
+            </div>
 
             <!-- 진행률 바 -->
             <div class="col-span-7">
-              <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+              <div :class="row._kind === 'parent'
+                           ? 'h-2.5 bg-gray-100 rounded-full overflow-hidden'
+                           : 'h-2 bg-gray-100 rounded-full overflow-hidden'">
                 <div class="h-full rounded-full progress-bar"
-                     :class="barColor(d)"
-                     :style="`width: ${d.responseRate}%`"></div>
+                     :class="barColor(row)"
+                     :style="`width: ${row.responseRate}%`"></div>
               </div>
             </div>
 
             <!-- 비율 -->
-            <div class="col-span-1 text-right text-sm font-semibold"
-                 :class="d.lowRate ? 'text-gray-400' : 'text-orange-500'"
-                 x-text="d.responseRate + '%'"></div>
+            <div class="col-span-1 text-right font-semibold"
+                 :class="(row._kind === 'parent' ? 'text-sm ' : 'text-xs ')
+                         + (row.lowRate ? 'text-gray-400'
+                            : (row._kind === 'parent' ? 'text-orange-500' : 'text-orange-400'))"
+                 x-text="row.responseRate + '%'"></div>
 
             <!-- 응답수 / 대상자 -->
             <div class="col-span-2 text-right text-xs text-gray-400"
-                 x-text="d.respondedCount + '/' + d.targetCount + '명'"></div>
+                 x-text="row.respondedCount + '/' + row.targetCount + '명'"></div>
           </div>
         </template>
 
         <!-- 빈 상태 -->
-        <div x-show="deptRates.length === 0" class="text-center py-10 text-gray-400 text-sm">
+        <div x-show="flatDeptRows.length === 0" class="text-center py-10 text-gray-400 text-sm">
           조회된 조직이 없습니다.
         </div>
       </div>
 
       <p class="text-xs text-gray-300 text-right mt-4">
-        기준: 마감일 70% 미만 조직은 회색 표시
+        기준: 응답률 70% 미만 조직은 회색 표시
       </p>
     </section>
 
@@ -451,6 +469,8 @@
         responseRate: 0, daysLeft: 0
       },
       deptRates: [],
+      flatDeptRows: [],      // init 에서 buildFlatRows() 결과 캐싱 — template x-for 가 직접 참조
+      expandedDeptIds: [],   // 펼쳐진 상위 부서 ID 목록
       questions: [],
       responses: [],
       responseTotal: 0,
@@ -468,19 +488,58 @@
       },
 
       async init() {
+        console.log('[DBG-1] init() 시작');
+
+        // 'after' 에러를 정확히 잡기 위한 전역 핸들러
+        if (!window.__deptDbgErrInstalled) {
+          window.__deptDbgErrInstalled = true;
+          window.addEventListener('error', (ev) => {
+            console.error('[DBG-ERR] window.error:', ev.message);
+            console.error('[DBG-ERR] stack:', ev.error && ev.error.stack);
+          });
+          window.addEventListener('unhandledrejection', (ev) => {
+            console.error('[DBG-ERR] unhandledrejection:', ev.reason);
+          });
+        }
+
         try {
           // 두 API 동시 호출
           const [summaryRes, deptsRes] = await Promise.all([
             axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/summary`),
             axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/depts`)
           ]);
+          console.log('[DBG-2] API 응답 도착');
+          console.log('[DBG-2a] deptsRes.status =', deptsRes.status);
+          console.log('[DBG-2b] deptsRes.data =', deptsRes.data);
+          console.log('[DBG-2c] deptsRes.data.data =', deptsRes.data && deptsRes.data.data);
+          console.log('[DBG-2d] isArray(deptsRes.data.data) =', Array.isArray(deptsRes.data && deptsRes.data.data));
+
+          const depts = deptsRes.data.data || [];
+          console.log('[DBG-3] depts 로컬 변수:', depts, 'length:', depts.length);
+
           this.summary = summaryRes.data.data;
-          this.deptRates = deptsRes.data.data;
+          this.deptRates = depts;
+          console.log('[DBG-4] this.deptRates 할당 완료');
+
+          const flat = this.buildFlatRows(depts);
+          console.log('[DBG-5] buildFlatRows 결과 length:', flat.length, ' rows:', flat);
+
+          this.flatDeptRows = flat;
+          console.log('[DBG-6] this.flatDeptRows 할당 완료. 현재 값 length:', this.flatDeptRows.length);
+
+          this.expandedDeptIds = depts
+              .filter(d => d.children && d.children.length > 0)
+              .map(d => d.deptId);
+          console.log('[DBG-7] expandedDeptIds:', this.expandedDeptIds);
         } catch (e) {
+          console.error('[DBG-CATCH] init() 예외 메시지:', e && e.message);
+          console.error('[DBG-CATCH] init() 예외 스택:', e && e.stack);
           console.error('[statistics] 조회 실패:', e);
           alert('통계 데이터를 불러오지 못했습니다.');
         } finally {
           this.ui.isLoading = false;
+          console.log('[DBG-8] init() 종료. final this.flatDeptRows length:',
+                      (this.flatDeptRows && this.flatDeptRows.length));
         }
       },
 
@@ -594,9 +653,49 @@
         }
       },
 
+      /** 트리(부모 + children) → 평면 배열로 변환. _kind 마커로 부모/자식 구분. */
+      buildFlatRows(rootNodes) {
+        console.log('[DBG-BF1] buildFlatRows 호출. rootNodes:', rootNodes,
+                    ' isArray:', Array.isArray(rootNodes));
+        const rows = [];
+        for (const dept of rootNodes || []) {
+          if (!dept || typeof dept !== 'object') {
+            console.warn('[DBG-BF-WARN] dept 가 객체 아님:', dept);
+            continue;
+          }
+          rows.push({ ...dept, _kind: 'parent' });
+          for (const child of dept.children || []) {
+            rows.push({ ...child, _kind: 'child', _parentDeptId: dept.deptId });
+          }
+        }
+        console.log('[DBG-BF2] buildFlatRows 종료. rows.length:', rows.length);
+        return rows;
+      },
+
+      /** 상위 부서 펼침 여부 */
+      isDeptExpanded(deptId) {
+        return this.expandedDeptIds.includes(deptId);
+      },
+
+      /** 상위 부서 펼치기/접기 토글 — 새 배열 재할당으로 reactivity 보장 */
+      toggleDept(deptId) {
+        if (this.isDeptExpanded(deptId)) {
+          this.expandedDeptIds = this.expandedDeptIds.filter(id => id !== deptId);
+        } else {
+          this.expandedDeptIds = [...this.expandedDeptIds, deptId];
+        }
+      },
+
+      /** row 한 줄 클릭 — 부모이면서 children 있을 때만 토글 */
+      onRowClick(row) {
+        if (row._kind === 'parent' && row.children && row.children.length > 0) {
+          this.toggleDept(row.deptId);
+        }
+      },
+
       /**
        * 응답률에 따라 막대 색상 분기
-       * - lowRate(마감일 70% 미만) → 회색
+       * - lowRate(응답률 70% 미만) → 회색
        * - 그 외 응답률 구간별로 진한/연한 오렌지로 강약
        */
       barColor(d) {
