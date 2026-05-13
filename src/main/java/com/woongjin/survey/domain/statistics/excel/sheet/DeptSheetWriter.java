@@ -18,7 +18,7 @@ import java.util.List;
  *  1행   : 헤더 — 부서명 / 응답대상 / 응답완료 / 응답률(%)
  *          · 부서ID 는 의도적으로 제외 (관리자 시점에 의미 없음)
  *  2행~  : 부서별 데이터
- *          · lowRate=true 인 행은 회색 배경 (마감일 70% 미만)
+ *          · lowRate=true 인 행은 회색 배경 (응답률 70% 미만)
  */
 @Component
 public class DeptSheetWriter {
@@ -52,10 +52,10 @@ public class DeptSheetWriter {
             CellStyle style = d.lowRate() ? styles.valueGray() : styles.value();
             Row row = sheet.createRow(i + 1);
 
-            ExcelCells.setCell(row, 0, d.deptName(),                       style);
+            ExcelCells.setCell(row, 0, d.deptName(),                               style);
             ExcelCells.setCell(row, 1, ExcelCells.formatCount(d.targetCount()),    style);
             ExcelCells.setCell(row, 2, ExcelCells.formatCount(d.respondedCount()), style);
-            ExcelCells.setCell(row, 3, d.responseRate() + "%",             style);
+            ExcelCells.setCell(row, 3, d.responseRate() + "%",                     style);
         }
     }
 }

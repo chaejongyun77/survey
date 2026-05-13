@@ -71,7 +71,10 @@ public class StatisticsController {
     @GetMapping("/export")
     public ResponseEntity<byte[]> exportStatistics(@PathVariable Long surveyId) {
         StatisticsSummaryResponse summary = statisticsQueryService.getSummary(surveyId);
-        List<DeptResponseRateResponse> depts = statisticsQueryService.getDeptResponseRates(surveyId);
+        // 엑셀 시트는 leaf 부서 단위 평면 행으로 출력 (기존 포맷 유지)
+        List<DeptResponseRateResponse> depts = DeptResponseRateResponse.flattenLeaves(
+                statisticsQueryService.getDeptResponseRates(surveyId)
+        );
         ResponseListResponse respondents = statisticsQueryService.getResponseListForExcel(surveyId);
         QuestionStatisticsListResponse questionStats = statisticsQueryService.getQuestionStatistics(surveyId);
         byte[] body = statisticsExcelExporter.exportAll(summary, depts, respondents, questionStats);

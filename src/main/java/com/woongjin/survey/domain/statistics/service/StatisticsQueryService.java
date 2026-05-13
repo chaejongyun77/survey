@@ -7,6 +7,7 @@ import com.woongjin.survey.domain.statistics.domain.statresult.RankingStatResult
 import com.woongjin.survey.domain.statistics.domain.statresult.ScaleStatResult;
 import com.woongjin.survey.domain.statistics.domain.statresult.SubjectiveStatResult;
 import com.woongjin.survey.domain.statistics.dto.DeptResponseRateResponse;
+import com.woongjin.survey.domain.statistics.dto.projection.DeptResponseRateProjection;
 import com.woongjin.survey.domain.statistics.dto.QuestionMetaDto;
 import com.woongjin.survey.domain.statistics.dto.QuestionStatItemResponse;
 import com.woongjin.survey.domain.statistics.dto.QuestionStatisticsListResponse;
@@ -20,7 +21,6 @@ import com.woongjin.survey.domain.statistics.repository.StatisticsRepository;
 import com.woongjin.survey.domain.survey.domain.Question;
 import com.woongjin.survey.domain.survey.domain.QuestionBranch;
 import com.woongjin.survey.domain.survey.domain.QuestionItem;
-import com.woongjin.survey.domain.survey.domain.Survey;
 import com.woongjin.survey.domain.survey.repository.QuestionBranchRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyQuestionRepository;
 import com.woongjin.survey.domain.survey.repository.SurveyRepository;
@@ -31,7 +31,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -59,15 +58,51 @@ public class StatisticsQueryService {
         return StatisticsSummaryResponse.from(p);
     }
 
+    /**
+     * 조직별 응답률 — 상위(LVL=1) 부서 아래 하위(LVL=2) 부서를 children 으로 묶어 트리 반환.
+     *
+     * [조립 규칙]
+     *  - 직원은 leaf 부서(보통 LVL=2)에 매핑되어 있다고 가정 → Repository 결과는 leaf 단위 행
+     *  - parentDeptId 가 있으면 그 부모 아래 children 으로 그룹핑, 부모 응답률은 합산값으로 재계산
+     *  - parentDeptId 가 null 이면 (LVL=1 부서에 직원이 직접 있는 경우) 단독 노드로 추가
+     *  - 부모는 응답률 내림차순, children 도 내부에서 응답률 내림차순
+     */
     @Transactional(readOnly = true)
     public List<DeptResponseRateResponse> getDeptResponseRates(Long surveyId) {
-        Survey survey = surveyRepository.findById(surveyId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.SURVEY_NOT_FOUND));
-        boolean isDeadlineToday = LocalDate.now().isEqual(survey.getEndDate().toLocalDate());
-        return statisticsRepository.findDeptResponseRates(surveyId).stream()
-                .map(p -> DeptResponseRateResponse.from(p, isDeadlineToday))
-                .sorted(Comparator.comparingDouble(DeptResponseRateResponse::responseRate).reversed())
-                .toList();
+        if (!surveyRepository.existsById(surveyId)) {
+            throw new BusinessException(ErrorCode.SURVEY_NOT_FOUND);
+        }
+
+        List<DeptResponseRateProjection> leafProjections = statisticsRepository.findDeptResponseRates(surveyId);
+
+        Map<Long, List<DeptResponseRateProjection>> leavesByParentId = leafProjections.stream()
+                .filter(projection -> projection.parentDeptId() != null)
+                .collect(Collectors.groupingBy(DeptResponseRateProjection::parentDeptId));
+
+        List<DeptResponseRateResponse> rootNodes = new ArrayList<>();
+
+        leavesByParentId.forEach((parentDeptId, siblingLeaves) -> {
+            String parentDeptName    = siblingLeaves.get(0).parentDeptName();
+            int totalTargetCount     = siblingLeaves.stream().mapToInt(projection -> (int) projection.targetCount()).sum();
+            int totalRespondedCount  = siblingLeaves.stream().mapToInt(projection -> (int) projection.respondedCount()).sum();
+
+            List<DeptResponseRateResponse> childNodes = siblingLeaves.stream()
+                    .map(DeptResponseRateResponse::leaf)
+                    .sorted(Comparator.comparingDouble(DeptResponseRateResponse::responseRate).reversed())
+                    .toList();
+
+            rootNodes.add(DeptResponseRateResponse.parent(
+                    parentDeptId, parentDeptName, totalTargetCount, totalRespondedCount, childNodes));
+        });
+
+        // 상위 부모가 없는 leaf — 단독 노드로 추가
+        leafProjections.stream()
+                .filter(projection -> projection.parentDeptId() == null)
+                .map(DeptResponseRateResponse::leaf)
+                .forEach(rootNodes::add);
+
+        rootNodes.sort(Comparator.comparingDouble(DeptResponseRateResponse::responseRate).reversed());
+        return rootNodes;
     }
 
     /**

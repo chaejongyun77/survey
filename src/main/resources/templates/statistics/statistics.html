@@ -130,30 +130,62 @@
         <div class="col-span-2 text-right">응답수</div>
       </div>
 
-      <!-- 부서별 행 -->
+      <!-- 부서별 행 (상위 부서 + 하위 부서 children) -->
       <div class="divide-y divide-gray-50">
         <template x-for="d in deptRates" :key="d.deptId">
-          <div class="grid grid-cols-12 gap-3 items-center px-2 py-3.5">
-            <!-- 조직명 -->
-            <div class="col-span-2 text-sm text-gray-700 font-medium" x-text="d.deptName"></div>
-
-            <!-- 진행률 바 -->
-            <div class="col-span-7">
-              <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                <div class="h-full rounded-full progress-bar"
-                     :class="barColor(d)"
-                     :style="`width: ${d.responseRate}%`"></div>
+          <div>
+            <!-- 상위 부서 행 -->
+            <div class="grid grid-cols-12 gap-3 items-center px-2 py-3.5"
+                 :class="d.children && d.children.length > 0 ? 'cursor-pointer hover:bg-gray-50' : ''"
+                 @click="d.children && d.children.length > 0 && toggleDept(d.deptId)">
+              <!-- 조직명 + 펼치기 아이콘 -->
+              <div class="col-span-2 text-sm text-gray-700 font-semibold flex items-center gap-1">
+                <span class="text-xs text-gray-400 w-3"
+                      x-text="d.children && d.children.length > 0 ? (isDeptExpanded(d.deptId) ? '▼' : '▶') : ''"></span>
+                <span x-text="d.deptName"></span>
               </div>
+
+              <!-- 진행률 바 -->
+              <div class="col-span-7">
+                <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div class="h-full rounded-full progress-bar"
+                       :class="barColor(d)"
+                       :style="`width: ${d.responseRate}%`"></div>
+                </div>
+              </div>
+
+              <!-- 비율 -->
+              <div class="col-span-1 text-right text-sm font-semibold"
+                   :class="d.lowRate ? 'text-gray-400' : 'text-orange-500'"
+                   x-text="d.responseRate + '%'"></div>
+
+              <!-- 응답수 / 대상자 -->
+              <div class="col-span-2 text-right text-xs text-gray-400"
+                   x-text="d.respondedCount + '/' + d.targetCount + '명'"></div>
             </div>
 
-            <!-- 비율 -->
-            <div class="col-span-1 text-right text-sm font-semibold"
-                 :class="d.lowRate ? 'text-gray-400' : 'text-orange-500'"
-                 x-text="d.responseRate + '%'"></div>
+            <!-- 하위 부서 행 (children) -->
+            <template x-for="c in (d.children || [])" :key="c.deptId">
+              <div class="grid grid-cols-12 gap-3 items-center px-2 py-2.5 bg-gray-50/40"
+                   x-show="isDeptExpanded(d.deptId)">
+                <div class="col-span-2 pl-6 text-xs text-gray-500" x-text="c.deptName"></div>
 
-            <!-- 응답수 / 대상자 -->
-            <div class="col-span-2 text-right text-xs text-gray-400"
-                 x-text="d.respondedCount + '/' + d.targetCount + '명'"></div>
+                <div class="col-span-7">
+                  <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full progress-bar"
+                         :class="barColor(c)"
+                         :style="`width: ${c.responseRate}%`"></div>
+                  </div>
+                </div>
+
+                <div class="col-span-1 text-right text-xs font-medium"
+                     :class="c.lowRate ? 'text-gray-400' : 'text-orange-400'"
+                     x-text="c.responseRate + '%'"></div>
+
+                <div class="col-span-2 text-right text-xs text-gray-400"
+                     x-text="c.respondedCount + '/' + c.targetCount + '명'"></div>
+              </div>
+            </template>
           </div>
         </template>
 
@@ -164,7 +196,7 @@
       </div>
 
       <p class="text-xs text-gray-300 text-right mt-4">
-        기준: 마감일 70% 미만 조직은 회색 표시
+        기준: 응답률 70% 미만 조직은 회색 표시
       </p>
     </section>
 
@@ -451,6 +483,7 @@
         responseRate: 0, daysLeft: 0
       },
       deptRates: [],
+      expandedDeptIds: [],   // 펼쳐진 상위 부서 ID 목록
       questions: [],
       responses: [],
       responseTotal: 0,
@@ -476,6 +509,10 @@
           ]);
           this.summary = summaryRes.data.data;
           this.deptRates = deptsRes.data.data;
+          // 하위 부서가 있는 상위 부서는 기본 펼침
+          this.expandedDeptIds = this.deptRates
+              .filter(d => d.children && d.children.length > 0)
+              .map(d => d.deptId);
         } catch (e) {
           console.error('[statistics] 조회 실패:', e);
           alert('통계 데이터를 불러오지 못했습니다.');
@@ -594,9 +631,23 @@
         }
       },
 
+      /** 상위 부서 펼침 여부 */
+      isDeptExpanded(deptId) {
+        return this.expandedDeptIds.includes(deptId);
+      },
+
+      /** 상위 부서 펼치기/접기 토글 */
+      toggleDept(deptId) {
+        if (this.isDeptExpanded(deptId)) {
+          this.expandedDeptIds = this.expandedDeptIds.filter(id => id !== deptId);
+        } else {
+          this.expandedDeptIds.push(deptId);
+        }
+      },
+
       /**
        * 응답률에 따라 막대 색상 분기
-       * - lowRate(마감일 70% 미만) → 회색
+       * - lowRate(응답률 70% 미만) → 회색
        * - 그 외 응답률 구간별로 진한/연한 오렌지로 강약
        */
       barColor(d) {
