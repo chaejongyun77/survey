@@ -1,5 +1,7 @@
 package com.woongjin.survey.global.security;
 
+import com.woongjin.survey.global.cookie.CookieUtil;
+import com.woongjin.survey.global.jwt.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woongjin.survey.global.filter.ClientTokenFilter;
 import com.woongjin.survey.global.jwt.ClientTokenProvider;
@@ -30,6 +32,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -153,6 +156,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/auth/login",
+                    "/auth/refresh-redirect",
                     "/css/**", "/js/**", "/images/**", "/*.html",
                     "/error/**",
                     "/api/external/v1/admin/auth/**",
@@ -170,18 +174,26 @@ public class SecurityConfig {
     }
 
     /**
-     * 401 인증 실패 처리.
-     * - API 요청(/api/**)  : 401 JSON 응답 → 프론트의 axios 인터셉터가 reissue 시도
-     * - 페이지 요청       : /auth/login 으로 302 리다이렉트
-     *
-     * API 요청까지 리다이렉트하면 브라우저가 302 를 따라가 200 HTML 을 받아
-     * 인터셉터가 401 을 감지하지 못해 자동 재발급 흐름이 무너진다.
+     * 401 처리 — 토큰 없음/만료 통합
+     * - /api/** : JSON 401 → api.js interceptor가 reissue 후 재요청
+     * - 페이지   : 리프레시 토큰 있으면 /auth/refresh-redirect → 재발급 후 원래 페이지
+     *             없으면 /auth/login
      */
     private AuthenticationEntryPoint unauthorizedEntryPoint() {
         return (request, response, authException) -> {
             if (request.getRequestURI().startsWith("/api/")) {
                 writeJsonResponse(response, HttpServletResponse.SC_UNAUTHORIZED,
                         ApiResponse.error("인증이 필요합니다."));
+                return;
+            }
+
+            String refreshToken = CookieUtil.extract(request, JwtAuthenticationFilter.REFRESH_TOKEN_COOKIE);
+            if (refreshToken != null) {
+                String uri = request.getRequestURI();
+                String qs  = request.getQueryString();
+                String original = (qs != null) ? uri + "?" + qs : uri;
+                response.sendRedirect("/auth/refresh-redirect?redirect=" +
+                        java.net.URLEncoder.encode(original, StandardCharsets.UTF_8));
             } else {
                 response.sendRedirect("/auth/login");
             }
