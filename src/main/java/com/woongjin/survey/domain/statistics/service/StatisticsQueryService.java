@@ -75,36 +75,36 @@ public class StatisticsQueryService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.SURVEY_NOT_FOUND));
         boolean isDeadlineToday = LocalDate.now().isEqual(survey.getEndDate().toLocalDate());
 
-        List<DeptResponseRateProjection> rows = statisticsRepository.findDeptResponseRates(surveyId);
+        List<DeptResponseRateProjection> leafProjections = statisticsRepository.findDeptResponseRates(surveyId);
 
-        Map<Long, List<DeptResponseRateProjection>> byParent = rows.stream()
-                .filter(r -> r.parentDeptId() != null)
+        Map<Long, List<DeptResponseRateProjection>> leavesByParentId = leafProjections.stream()
+                .filter(projection -> projection.parentDeptId() != null)
                 .collect(Collectors.groupingBy(DeptResponseRateProjection::parentDeptId));
 
-        List<DeptResponseRateResponse> result = new ArrayList<>();
+        List<DeptResponseRateResponse> rootNodes = new ArrayList<>();
 
-        byParent.forEach((parentId, group) -> {
-            String parentName = group.get(0).parentDeptName();
-            int totalTarget    = group.stream().mapToInt(r -> (int) r.targetCount()).sum();
-            int totalResponded = group.stream().mapToInt(r -> (int) r.respondedCount()).sum();
+        leavesByParentId.forEach((parentDeptId, siblingLeaves) -> {
+            String parentDeptName    = siblingLeaves.get(0).parentDeptName();
+            int totalTargetCount     = siblingLeaves.stream().mapToInt(projection -> (int) projection.targetCount()).sum();
+            int totalRespondedCount  = siblingLeaves.stream().mapToInt(projection -> (int) projection.respondedCount()).sum();
 
-            List<DeptResponseRateResponse> children = group.stream()
-                    .map(c -> DeptResponseRateResponse.leaf(c, isDeadlineToday))
+            List<DeptResponseRateResponse> childNodes = siblingLeaves.stream()
+                    .map(projection -> DeptResponseRateResponse.leaf(projection, isDeadlineToday))
                     .sorted(Comparator.comparingDouble(DeptResponseRateResponse::responseRate).reversed())
                     .toList();
 
-            result.add(DeptResponseRateResponse.parent(
-                    parentId, parentName, totalTarget, totalResponded, children, isDeadlineToday));
+            rootNodes.add(DeptResponseRateResponse.parent(
+                    parentDeptId, parentDeptName, totalTargetCount, totalRespondedCount, childNodes, isDeadlineToday));
         });
 
         // 상위 부모가 없는 leaf — 단독 노드로 추가
-        rows.stream()
-                .filter(r -> r.parentDeptId() == null)
-                .map(r -> DeptResponseRateResponse.leaf(r, isDeadlineToday))
-                .forEach(result::add);
+        leafProjections.stream()
+                .filter(projection -> projection.parentDeptId() == null)
+                .map(projection -> DeptResponseRateResponse.leaf(projection, isDeadlineToday))
+                .forEach(rootNodes::add);
 
-        result.sort(Comparator.comparingDouble(DeptResponseRateResponse::responseRate).reversed());
-        return result;
+        rootNodes.sort(Comparator.comparingDouble(DeptResponseRateResponse::responseRate).reversed());
+        return rootNodes;
     }
 
     /**

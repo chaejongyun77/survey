@@ -102,7 +102,7 @@ public class StatisticsRepositoryImpl implements StatisticsRepository {
         QSurveyTargetPerson tp = QSurveyTargetPerson.surveyTargetPerson;
         QEmployee e            = QEmployee.employee;
         QDepartment d          = QDepartment.department;
-        QDepartment p          = new QDepartment("parent");      // 상위 부서 alias
+        QDepartment parentDept = new QDepartment("parent");      // 상위 부서 alias (self-join)
         QAnswer a              = QAnswer.answer;
 
         return queryFactory
@@ -110,21 +110,21 @@ public class StatisticsRepositoryImpl implements StatisticsRepository {
                         d.id,
                         d.deptName,
                         d.depth,
-                        p.id,                                    // 상위 부서 ID — 없으면 null
-                        p.deptName,                              // 상위 부서명 — 없으면 null
+                        parentDept.id,                           // 상위 부서 ID — 없으면 null
+                        parentDept.deptName,                     // 상위 부서명 — 없으면 null
                         tp.employee.id.count(),                  // 부서 내 대상자 수
                         a.empId.count()                          // LEFT JOIN 매칭된 응답자 수 (null 제외)
                 ))
                 .from(tp)
                 .join(tp.employee, e)
                 .join(e.department, d)
-                .leftJoin(d.parent, p)
+                .leftJoin(d.parent, parentDept)
                 .leftJoin(a).on(
                         a.surveyId.eq(tp.survey.id),
                         a.empId.eq(tp.employee.id)
                 )
                 .where(tp.survey.id.eq(surveyId))
-                .groupBy(d.id, d.deptName, d.depth, p.id, p.deptName)
+                .groupBy(d.id, d.deptName, d.depth, parentDept.id, parentDept.deptName)
                 .fetch();
     }
 
