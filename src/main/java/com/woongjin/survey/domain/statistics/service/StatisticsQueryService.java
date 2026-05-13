@@ -7,6 +7,7 @@ import com.woongjin.survey.domain.statistics.domain.statresult.RankingStatResult
 import com.woongjin.survey.domain.statistics.domain.statresult.ScaleStatResult;
 import com.woongjin.survey.domain.statistics.domain.statresult.SubjectiveStatResult;
 import com.woongjin.survey.domain.statistics.dto.DeptResponseRateResponse;
+import com.woongjin.survey.domain.statistics.dto.projection.DeptResponseRateProjection;
 import com.woongjin.survey.domain.statistics.dto.QuestionMetaDto;
 import com.woongjin.survey.domain.statistics.dto.QuestionStatItemResponse;
 import com.woongjin.survey.domain.statistics.dto.QuestionStatisticsListResponse;
@@ -59,15 +60,51 @@ public class StatisticsQueryService {
         return StatisticsSummaryResponse.from(p);
     }
 
+    /**
+     * 조직별 응답률 — 상위(LVL=1) 부서 아래 하위(LVL=2) 부서를 children 으로 묶어 트리 반환.
+     *
+     * [조립 규칙]
+     *  - 직원은 leaf 부서(보통 LVL=2)에 매핑되어 있다고 가정 → Repository 결과는 leaf 단위 행
+     *  - parentDeptId 가 있으면 그 부모 아래 children 으로 그룹핑, 부모 응답률은 합산값으로 재계산
+     *  - parentDeptId 가 null 이면 (LVL=1 부서에 직원이 직접 있는 경우) 단독 노드로 추가
+     *  - 부모는 응답률 내림차순, children 도 내부에서 응답률 내림차순
+     */
     @Transactional(readOnly = true)
     public List<DeptResponseRateResponse> getDeptResponseRates(Long surveyId) {
         Survey survey = surveyRepository.findById(surveyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SURVEY_NOT_FOUND));
         boolean isDeadlineToday = LocalDate.now().isEqual(survey.getEndDate().toLocalDate());
-        return statisticsRepository.findDeptResponseRates(surveyId).stream()
-                .map(p -> DeptResponseRateResponse.from(p, isDeadlineToday))
-                .sorted(Comparator.comparingDouble(DeptResponseRateResponse::responseRate).reversed())
-                .toList();
+
+        List<DeptResponseRateProjection> rows = statisticsRepository.findDeptResponseRates(surveyId);
+
+        Map<Long, List<DeptResponseRateProjection>> byParent = rows.stream()
+                .filter(r -> r.parentDeptId() != null)
+                .collect(Collectors.groupingBy(DeptResponseRateProjection::parentDeptId));
+
+        List<DeptResponseRateResponse> result = new ArrayList<>();
+
+        byParent.forEach((parentId, group) -> {
+            String parentName = group.get(0).parentDeptName();
+            int totalTarget    = group.stream().mapToInt(r -> (int) r.targetCount()).sum();
+            int totalResponded = group.stream().mapToInt(r -> (int) r.respondedCount()).sum();
+
+            List<DeptResponseRateResponse> children = group.stream()
+                    .map(c -> DeptResponseRateResponse.leaf(c, isDeadlineToday))
+                    .sorted(Comparator.comparingDouble(DeptResponseRateResponse::responseRate).reversed())
+                    .toList();
+
+            result.add(DeptResponseRateResponse.parent(
+                    parentId, parentName, totalTarget, totalResponded, children, isDeadlineToday));
+        });
+
+        // 상위 부모가 없는 leaf — 단독 노드로 추가
+        rows.stream()
+                .filter(r -> r.parentDeptId() == null)
+                .map(r -> DeptResponseRateResponse.leaf(r, isDeadlineToday))
+                .forEach(result::add);
+
+        result.sort(Comparator.comparingDouble(DeptResponseRateResponse::responseRate).reversed());
+        return result;
     }
 
     /**

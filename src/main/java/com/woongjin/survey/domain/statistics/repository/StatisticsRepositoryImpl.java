@@ -37,6 +37,8 @@ import java.util.Optional;
  * - 대상자 테이블(SVY_TRPSN_TB)을 기준으로 EMP→DEPT 따라가서 부서별 GROUP BY
  * - 응답 테이블은 LEFT JOIN — 응답하지 않은 대상자는 카운트 0으로 포함
  * - count(r.empId)는 NULL 을 세지 않으므로 자연스럽게 응답자 수가 됨
+ * - 부서의 상위 부서(d.parent)도 LEFT JOIN — 트리 조립용 컬럼만 추가 노출
+ *   (최상위 부서는 parent.id / parent.deptName 이 null)
  *
  * [쿼리 설계 — findRecentResponses]
  * - Answer + Employee + Department JOIN 한 번에 (N+1 방지)
@@ -100,24 +102,29 @@ public class StatisticsRepositoryImpl implements StatisticsRepository {
         QSurveyTargetPerson tp = QSurveyTargetPerson.surveyTargetPerson;
         QEmployee e            = QEmployee.employee;
         QDepartment d          = QDepartment.department;
+        QDepartment p          = new QDepartment("parent");      // 상위 부서 alias
         QAnswer a              = QAnswer.answer;
 
         return queryFactory
                 .select(Projections.constructor(DeptResponseRateProjection.class,
                         d.id,
                         d.deptName,
+                        d.depth,
+                        p.id,                                    // 상위 부서 ID — 없으면 null
+                        p.deptName,                              // 상위 부서명 — 없으면 null
                         tp.employee.id.count(),                  // 부서 내 대상자 수
                         a.empId.count()                          // LEFT JOIN 매칭된 응답자 수 (null 제외)
                 ))
                 .from(tp)
                 .join(tp.employee, e)
                 .join(e.department, d)
+                .leftJoin(d.parent, p)
                 .leftJoin(a).on(
                         a.surveyId.eq(tp.survey.id),
                         a.empId.eq(tp.employee.id)
                 )
                 .where(tp.survey.id.eq(surveyId))
-                .groupBy(d.id, d.deptName)
+                .groupBy(d.id, d.deptName, d.depth, p.id, p.deptName)
                 .fetch();
     }
 
