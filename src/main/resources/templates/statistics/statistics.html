@@ -133,7 +133,7 @@
       <!-- 부서별 행 — 부모/자식을 평탄화한 단일 리스트로 렌더링.
            Alpine.js v3 의 중첩 <template x-for> 가 anchor 추적에서 깨지는 문제를 회피. -->
       <div class="divide-y divide-gray-50">
-        <template x-for="row in flattenedDeptRows" :key="row._kind + '-' + row.deptId">
+        <template x-for="row in buildFlatRows(deptRates)" :key="row._kind + '-' + row.deptId">
           <div class="grid grid-cols-12 gap-3 items-center px-2"
                :class="row._kind === 'parent'
                        ? (row.children && row.children.length > 0 ? 'py-3.5 cursor-pointer hover:bg-gray-50' : 'py-3.5')
@@ -470,7 +470,6 @@
         responseRate: 0, daysLeft: 0
       },
       deptRates: [],
-      flattenedDeptRows: [],   // 단일 x-for 렌더링용 평면 행 (부모 + 자식 마커 부착)
       expandedDeptIds: [],   // 펼쳐진 상위 부서 ID 목록
       questions: [],
       responses: [],
@@ -497,7 +496,6 @@
           ]);
           this.summary = summaryRes.data.data;
           this.deptRates = deptsRes.data.data;
-          this.flattenedDeptRows = this.buildFlatRows(this.deptRates);
           // 하위 부서가 있는 상위 부서는 기본 펼침
           this.expandedDeptIds = this.deptRates
               .filter(d => d.children && d.children.length > 0)
