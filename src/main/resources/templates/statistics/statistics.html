@@ -9,6 +9,7 @@
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="/js/api.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
 <body class="bg-gray-50 min-h-screen">
@@ -505,8 +506,8 @@
         try {
           // 두 API 동시 호출
           const [summaryRes, deptsRes] = await Promise.all([
-            axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/summary`),
-            axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/depts`)
+            api.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/summary`, { baseURL: '' }),
+            api.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/depts`, { baseURL: '' })
           ]);
           console.log('[DBG-2] API 응답 도착');
           console.log('[DBG-2a] deptsRes.status =', deptsRes.status);
@@ -560,7 +561,7 @@
       async loadRespondents() {
         this.ui.respondentsLoading = true;
         try {
-          const res = await axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/responses`);
+          const res = await api.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/responses`, { baseURL: '' });
           const data = res.data.data;
           this.questions = data.questions;
           this.responses = data.responses;
@@ -579,7 +580,7 @@
       async loadQuestionStatistics() {
         this.ui.questionsLoading = true;
         try {
-          const res = await axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/questions`);
+          const res = await api.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/questions`, { baseURL: '' });
           const data = res.data.data;
           this.questionStats = data.questions.map(q => ({ ...q, textOpen: false }));
           this.aggregatedAt = data.aggregatedAt;
@@ -596,7 +597,7 @@
       async runBatchManually() {
         this.ui.batchRunning = true;
         try {
-          await axios.post('/api/internal/v1/admin/batch/statistics/run', null, { timeout: 60000 });
+          await api.post('/api/internal/v1/admin/batch/statistics/run', null, { baseURL: '', timeout: 60000 });
           this.ui.questionsLoaded = false;
           await this.loadQuestionStatistics();
         } catch (e) {
@@ -764,9 +765,9 @@
        */
       async downloadStatisticsExcel() {
         try {
-          const res = await axios.get(
+          const res = await api.get(
               `/api/internal/v1/surveys/${SVY_ID}/statistics/export`,
-              { responseType: 'blob' }
+              { baseURL: '', responseType: 'blob' }
           );
 
           const filename = this.parseFilename(res.headers['content-disposition'])
@@ -813,9 +814,9 @@
         if (this.hist.loading || !this.hist.hasMore) return;
         this.hist.loading = true;
         try {
-          const res = await axios.get(
+          const res = await api.get(
             `/api/internal/v1/surveys/${SVY_ID}/statistics/export/history`,
-            { params: { page: this.hist.page } }
+            { baseURL: '', params: { page: this.hist.page } }
           );
           const data = res.data.data;
           if (this.hist.page === 0) this.hist.totalCount = data.totalCount;
