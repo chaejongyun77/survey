@@ -4,6 +4,9 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// 동시 401 race condition 방지용 — reissue 요청 1회만 공유
+let reissuePromise = null;
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -24,7 +27,13 @@ api.interceptors.response.use(
         if (!error.config._retry) {
           error.config._retry = true;
           try {
-            await axios.post("/api/external/v1/admin/auth/reissue", {}, { withCredentials: true });
+            // 이미 진행 중인 reissue 가 있으면 그 결과를 함께 기다림
+            if (!reissuePromise) {
+              reissuePromise = axios
+                .post("/api/external/v1/admin/auth/reissue", {}, { withCredentials: true })
+                .finally(() => { reissuePromise = null; });
+            }
+            await reissuePromise;
             return api.request(error.config);
           } catch {
             alert("세션이 만료되었습니다. 다시 로그인해주세요.");
