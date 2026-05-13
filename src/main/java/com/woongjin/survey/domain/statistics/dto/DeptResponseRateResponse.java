@@ -13,6 +13,7 @@ import java.util.List;
  *
  * [필드 메모]
  * - children : 하위 부서 노드. leaf 면 빈 리스트
+ * - lowRate  : 응답률 70% 미만 회색 표시 플래그 (부모/자식 동일 규칙)
  */
 public record DeptResponseRateResponse(
         Long deptId,
@@ -21,8 +22,10 @@ public record DeptResponseRateResponse(
         int targetCount,
         int respondedCount,
         double responseRate,   // %, 소수 첫째자리
+        boolean lowRate,
         List<DeptResponseRateResponse> children
 ) {
+    private static final double LOW_RATE_THRESHOLD = 70.0;
 
     /** 직원이 직접 속한 leaf 부서 (보통 LVL=2) */
     public static DeptResponseRateResponse leaf(DeptResponseRateProjection projection) {
@@ -47,8 +50,9 @@ public record DeptResponseRateResponse(
         double responseRate = targetCount == 0
                 ? 0.0
                 : Math.round((double) respondedCount / targetCount * 1000) / 10.0;
+        boolean lowRate = responseRate < LOW_RATE_THRESHOLD;
         return new DeptResponseRateResponse(
-                deptId, deptName, deptLvl, targetCount, respondedCount, responseRate, children);
+                deptId, deptName, deptLvl, targetCount, respondedCount, responseRate, lowRate, children);
     }
 
     /**

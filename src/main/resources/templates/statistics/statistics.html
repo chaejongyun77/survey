@@ -155,7 +155,8 @@
               </div>
 
               <!-- 비율 -->
-              <div class="col-span-1 text-right text-sm font-semibold text-orange-500"
+              <div class="col-span-1 text-right text-sm font-semibold"
+                   :class="d.lowRate ? 'text-gray-400' : 'text-orange-500'"
                    x-text="d.responseRate + '%'"></div>
 
               <!-- 응답수 / 대상자 -->
@@ -177,7 +178,8 @@
                   </div>
                 </div>
 
-                <div class="col-span-1 text-right text-xs font-medium text-orange-400"
+                <div class="col-span-1 text-right text-xs font-medium"
+                     :class="c.lowRate ? 'text-gray-400' : 'text-orange-400'"
                      x-text="c.responseRate + '%'"></div>
 
                 <div class="col-span-2 text-right text-xs text-gray-400"
@@ -193,6 +195,9 @@
         </div>
       </div>
 
+      <p class="text-xs text-gray-300 text-right mt-4">
+        기준: 응답률 70% 미만 조직은 회색 표시
+      </p>
     </section>
 
     <!-- ─────────── [탭2] 문항별 응답현황 ─────────── -->
@@ -640,8 +645,13 @@
         }
       },
 
-      /** 응답률 구간별로 진한/연한 오렌지로 강약 */
+      /**
+       * 응답률에 따라 막대 색상 분기
+       * - lowRate(응답률 70% 미만) → 회색
+       * - 그 외 응답률 구간별로 진한/연한 오렌지로 강약
+       */
       barColor(d) {
+        if (d.lowRate) return 'bg-gray-300';
         if (d.responseRate >= 80) return 'bg-orange-500';
         if (d.responseRate >= 60) return 'bg-orange-400';
         return 'bg-orange-300';
