@@ -7,6 +7,7 @@ import com.woongjin.survey.global.jwt.JwtAuthenticationFilter;
 import com.woongjin.survey.global.response.ApiResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -52,6 +53,27 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * JwtAuthenticationFilter 자동 서블릿 등록 비활성화
+     *
+     * @Component 로 등록된 Filter 빈은 Spring Boot 가 기본 서블릿 필터로도 자동 등록한다.
+     * 그러면 employeeFilterChain 내부의 .addFilterBefore() 등록과 별개로
+     * FilterChainProxy 바깥(아주 늦은 순서)에서 한 번 더 실행되어,
+     * clientFilterChain 이 세팅한 SecurityContext(설문 참여자 empId)를
+     * ACCESS_TOKEN 쿠키 기반 UserPrincipal 로 덮어쓰는 문제가 발생한다.
+     * → 컨트롤러의 @AuthenticationPrincipal Long empId 가 null 이 되어
+     *    "설문대상자가 아닙니다" 오류로 이어짐.
+     *
+     * Spring Security 체인 내부에서만 동작하도록 자동 등록을 끈다.
+     */
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> disableJwtAuthenticationFilterAutoRegistration(
+            JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean
