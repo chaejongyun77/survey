@@ -169,9 +169,23 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 401 인증 실패 — 직원 체인은 Thymeleaf 기반이므로 로그인 페이지로 리다이렉트
+    /**
+     * 401 인증 실패 처리.
+     * - API 요청(/api/**)  : 401 JSON 응답 → 프론트의 axios 인터셉터가 reissue 시도
+     * - 페이지 요청       : /auth/login 으로 302 리다이렉트
+     *
+     * API 요청까지 리다이렉트하면 브라우저가 302 를 따라가 200 HTML 을 받아
+     * 인터셉터가 401 을 감지하지 못해 자동 재발급 흐름이 무너진다.
+     */
     private AuthenticationEntryPoint unauthorizedEntryPoint() {
-        return (request, response, authException) -> response.sendRedirect("/auth/login");
+        return (request, response, authException) -> {
+            if (request.getRequestURI().startsWith("/api/")) {
+                writeJsonResponse(response, HttpServletResponse.SC_UNAUTHORIZED,
+                        ApiResponse.error("인증이 필요합니다."));
+            } else {
+                response.sendRedirect("/auth/login");
+            }
+        };
     }
 
     // 403 권한 부족
