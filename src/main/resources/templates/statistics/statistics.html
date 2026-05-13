@@ -145,10 +145,10 @@
             <div :class="row._kind === 'parent'
                          ? 'col-span-2 text-sm text-gray-700 font-semibold flex items-center gap-1'
                          : 'col-span-2 pl-6 text-xs text-gray-500'">
-              <template x-if="row._kind === 'parent' && row.children && row.children.length > 0">
-                <span class="text-xs text-gray-400 w-3"
-                      x-text="isDeptExpanded(row.deptId) ? '▼' : '▶'"></span>
-              </template>
+              <span class="text-xs text-gray-400 w-3"
+                    x-text="(row._kind === 'parent' && row.children && row.children.length > 0)
+                            ? (isDeptExpanded(row.deptId) ? '▼' : '▶')
+                            : ''"></span>
               <span x-text="row.deptName"></span>
             </div>
 
