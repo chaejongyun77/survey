@@ -13,7 +13,6 @@ import java.util.List;
  *
  * [필드 메모]
  * - children : 하위 부서 노드. leaf 면 빈 리스트
- * - lowRate  : 마감일 70% 미만 회색 표시 플래그 (부모/자식 동일 규칙)
  */
 public record DeptResponseRateResponse(
         Long deptId,
@@ -22,39 +21,34 @@ public record DeptResponseRateResponse(
         int targetCount,
         int respondedCount,
         double responseRate,   // %, 소수 첫째자리
-        boolean lowRate,
         List<DeptResponseRateResponse> children
 ) {
-    private static final double LOW_RATE_THRESHOLD = 70.0;
 
     /** 직원이 직접 속한 leaf 부서 (보통 LVL=2) */
-    public static DeptResponseRateResponse leaf(DeptResponseRateProjection projection, boolean isDeadlineToday) {
+    public static DeptResponseRateResponse leaf(DeptResponseRateProjection projection) {
         int deptLvl = projection.deptLvl() == null ? 2 : projection.deptLvl();
         return build(projection.deptId(), projection.deptName(), deptLvl,
                 (int) projection.targetCount(), (int) projection.respondedCount(),
-                isDeadlineToday, List.of());
+                List.of());
     }
 
     /** 하위 leaf 들을 합산하여 만든 상위 부서 노드 (LVL=1) */
     public static DeptResponseRateResponse parent(
             Long deptId, String deptName,
             int totalTargetCount, int totalRespondedCount,
-            List<DeptResponseRateResponse> children,
-            boolean isDeadlineToday) {
-        return build(deptId, deptName, 1, totalTargetCount, totalRespondedCount, isDeadlineToday, children);
+            List<DeptResponseRateResponse> children) {
+        return build(deptId, deptName, 1, totalTargetCount, totalRespondedCount, children);
     }
 
     private static DeptResponseRateResponse build(
             Long deptId, String deptName, int deptLvl,
             int targetCount, int respondedCount,
-            boolean isDeadlineToday,
             List<DeptResponseRateResponse> children) {
         double responseRate = targetCount == 0
                 ? 0.0
                 : Math.round((double) respondedCount / targetCount * 1000) / 10.0;
-        boolean lowRate = isDeadlineToday && responseRate < LOW_RATE_THRESHOLD;
         return new DeptResponseRateResponse(
-                deptId, deptName, deptLvl, targetCount, respondedCount, responseRate, lowRate, children);
+                deptId, deptName, deptLvl, targetCount, respondedCount, responseRate, children);
     }
 
     /**
