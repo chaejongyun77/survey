@@ -130,62 +130,49 @@
         <div class="col-span-2 text-right">응답수</div>
       </div>
 
-      <!-- 부서별 행 (상위 부서 + 하위 부서 children) -->
+      <!-- 부서별 행 — 부모/자식을 평탄화한 단일 리스트로 렌더링.
+           Alpine.js v3 의 중첩 <template x-for> 가 anchor 추적에서 깨지는 문제를 회피. -->
       <div class="divide-y divide-gray-50">
-        <template x-for="d in deptRates" :key="d.deptId">
-          <div>
-            <!-- 상위 부서 행 -->
-            <div class="grid grid-cols-12 gap-3 items-center px-2 py-3.5"
-                 :class="d.children && d.children.length > 0 ? 'cursor-pointer hover:bg-gray-50' : ''"
-                 @click="d.children && d.children.length > 0 && toggleDept(d.deptId)">
-              <!-- 조직명 + 펼치기 아이콘 -->
-              <div class="col-span-2 text-sm text-gray-700 font-semibold flex items-center gap-1">
+        <template x-for="row in flattenedDeptRows" :key="row._kind + '-' + row.deptId">
+          <div class="grid grid-cols-12 gap-3 items-center px-2"
+               :class="row._kind === 'parent'
+                       ? (row.children && row.children.length > 0 ? 'py-3.5 cursor-pointer hover:bg-gray-50' : 'py-3.5')
+                       : 'py-2.5 bg-gray-50/40'"
+               x-show="row._kind === 'parent' || isDeptExpanded(row._parentDeptId)"
+               @click="onRowClick(row)">
+
+            <!-- 조직명 (+ 부모일 때 펼치기 아이콘) -->
+            <div :class="row._kind === 'parent'
+                         ? 'col-span-2 text-sm text-gray-700 font-semibold flex items-center gap-1'
+                         : 'col-span-2 pl-6 text-xs text-gray-500'">
+              <template x-if="row._kind === 'parent' && row.children && row.children.length > 0">
                 <span class="text-xs text-gray-400 w-3"
-                      x-text="d.children && d.children.length > 0 ? (isDeptExpanded(d.deptId) ? '▼' : '▶') : ''"></span>
-                <span x-text="d.deptName"></span>
-              </div>
-
-              <!-- 진행률 바 -->
-              <div class="col-span-7">
-                <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full progress-bar"
-                       :class="barColor(d)"
-                       :style="`width: ${d.responseRate}%`"></div>
-                </div>
-              </div>
-
-              <!-- 비율 -->
-              <div class="col-span-1 text-right text-sm font-semibold"
-                   :class="d.lowRate ? 'text-gray-400' : 'text-orange-500'"
-                   x-text="d.responseRate + '%'"></div>
-
-              <!-- 응답수 / 대상자 -->
-              <div class="col-span-2 text-right text-xs text-gray-400"
-                   x-text="d.respondedCount + '/' + d.targetCount + '명'"></div>
+                      x-text="isDeptExpanded(row.deptId) ? '▼' : '▶'"></span>
+              </template>
+              <span x-text="row.deptName"></span>
             </div>
 
-            <!-- 하위 부서 행 (children) -->
-            <template x-for="c in (d.children || [])" :key="c.deptId">
-              <div class="grid grid-cols-12 gap-3 items-center px-2 py-2.5 bg-gray-50/40"
-                   x-show="isDeptExpanded(d.deptId)">
-                <div class="col-span-2 pl-6 text-xs text-gray-500" x-text="c.deptName"></div>
-
-                <div class="col-span-7">
-                  <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div class="h-full rounded-full progress-bar"
-                         :class="barColor(c)"
-                         :style="`width: ${c.responseRate}%`"></div>
-                  </div>
-                </div>
-
-                <div class="col-span-1 text-right text-xs font-medium"
-                     :class="c.lowRate ? 'text-gray-400' : 'text-orange-400'"
-                     x-text="c.responseRate + '%'"></div>
-
-                <div class="col-span-2 text-right text-xs text-gray-400"
-                     x-text="c.respondedCount + '/' + c.targetCount + '명'"></div>
+            <!-- 진행률 바 (부모는 두꺼운 막대, 자식은 얇은 막대) -->
+            <div class="col-span-7">
+              <div :class="row._kind === 'parent'
+                           ? 'h-2.5 bg-gray-100 rounded-full overflow-hidden'
+                           : 'h-2 bg-gray-100 rounded-full overflow-hidden'">
+                <div class="h-full rounded-full progress-bar"
+                     :class="barColor(row)"
+                     :style="`width: ${row.responseRate}%`"></div>
               </div>
-            </template>
+            </div>
+
+            <!-- 비율 -->
+            <div class="col-span-1 text-right font-semibold"
+                 :class="(row._kind === 'parent' ? 'text-sm ' : 'text-xs ')
+                         + (row.lowRate ? 'text-gray-400'
+                            : (row._kind === 'parent' ? 'text-orange-500' : 'text-orange-400'))"
+                 x-text="row.responseRate + '%'"></div>
+
+            <!-- 응답수 / 대상자 -->
+            <div class="col-span-2 text-right text-xs text-gray-400"
+                 x-text="row.respondedCount + '/' + row.targetCount + '명'"></div>
           </div>
         </template>
 
@@ -483,6 +470,7 @@
         responseRate: 0, daysLeft: 0
       },
       deptRates: [],
+      flattenedDeptRows: [],   // 단일 x-for 렌더링용 평면 행 (부모 + 자식 마커 부착)
       expandedDeptIds: [],   // 펼쳐진 상위 부서 ID 목록
       questions: [],
       responses: [],
@@ -509,6 +497,7 @@
           ]);
           this.summary = summaryRes.data.data;
           this.deptRates = deptsRes.data.data;
+          this.flattenedDeptRows = this.buildFlatRows(this.deptRates);
           // 하위 부서가 있는 상위 부서는 기본 펼침
           this.expandedDeptIds = this.deptRates
               .filter(d => d.children && d.children.length > 0)
@@ -631,6 +620,18 @@
         }
       },
 
+      /** 트리(부모 + children) → 단일 x-for 용 평면 배열로 변환. _kind 마커로 부모/자식 구분. */
+      buildFlatRows(rootNodes) {
+        const rows = [];
+        for (const dept of rootNodes || []) {
+          rows.push({ ...dept, _kind: 'parent' });
+          for (const child of dept.children || []) {
+            rows.push({ ...child, _kind: 'child', _parentDeptId: dept.deptId });
+          }
+        }
+        return rows;
+      },
+
       /** 상위 부서 펼침 여부 */
       isDeptExpanded(deptId) {
         return this.expandedDeptIds.includes(deptId);
@@ -642,6 +643,13 @@
           this.expandedDeptIds = this.expandedDeptIds.filter(id => id !== deptId);
         } else {
           this.expandedDeptIds.push(deptId);
+        }
+      },
+
+      /** row 한 줄 클릭 — 부모이면서 children 있을 때만 토글 */
+      onRowClick(row) {
+        if (row._kind === 'parent' && row.children && row.children.length > 0) {
+          this.toggleDept(row.deptId);
         }
       },
 
