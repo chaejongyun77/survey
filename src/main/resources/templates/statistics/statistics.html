@@ -494,10 +494,12 @@
             axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/summary`),
             axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/depts`)
           ]);
+          // proxy 왕복(this.deptRates 재읽기) 회피 — 로컬 변수에서 직접 가공
+          const depts = deptsRes.data.data || [];
           this.summary = summaryRes.data.data;
-          this.deptRates = deptsRes.data.data;
+          this.deptRates = depts;
           // 하위 부서가 있는 상위 부서는 기본 펼침
-          this.expandedDeptIds = this.deptRates
+          this.expandedDeptIds = depts
               .filter(d => d.children && d.children.length > 0)
               .map(d => d.deptId);
         } catch (e) {
