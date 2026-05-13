@@ -488,26 +488,58 @@
       },
 
       async init() {
+        console.log('[DBG-1] init() 시작');
+
+        // 'after' 에러를 정확히 잡기 위한 전역 핸들러
+        if (!window.__deptDbgErrInstalled) {
+          window.__deptDbgErrInstalled = true;
+          window.addEventListener('error', (ev) => {
+            console.error('[DBG-ERR] window.error:', ev.message);
+            console.error('[DBG-ERR] stack:', ev.error && ev.error.stack);
+          });
+          window.addEventListener('unhandledrejection', (ev) => {
+            console.error('[DBG-ERR] unhandledrejection:', ev.reason);
+          });
+        }
+
         try {
           // 두 API 동시 호출
           const [summaryRes, deptsRes] = await Promise.all([
             axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/summary`),
             axios.get(`/api/internal/v1/surveys/${SVY_ID}/statistics/depts`)
           ]);
+          console.log('[DBG-2] API 응답 도착');
+          console.log('[DBG-2a] deptsRes.status =', deptsRes.status);
+          console.log('[DBG-2b] deptsRes.data =', deptsRes.data);
+          console.log('[DBG-2c] deptsRes.data.data =', deptsRes.data && deptsRes.data.data);
+          console.log('[DBG-2d] isArray(deptsRes.data.data) =', Array.isArray(deptsRes.data && deptsRes.data.data));
+
           const depts = deptsRes.data.data || [];
+          console.log('[DBG-3] depts 로컬 변수:', depts, 'length:', depts.length);
+
           this.summary = summaryRes.data.data;
           this.deptRates = depts;
-          // template x-for 가 직접 쓸 평면 배열을 init 에서 한 번에 조립
-          this.flatDeptRows = this.buildFlatRows(depts);
-          // 하위 부서가 있는 상위 부서는 기본 펼침
+          console.log('[DBG-4] this.deptRates 할당 완료');
+
+          const flat = this.buildFlatRows(depts);
+          console.log('[DBG-5] buildFlatRows 결과 length:', flat.length, ' rows:', flat);
+
+          this.flatDeptRows = flat;
+          console.log('[DBG-6] this.flatDeptRows 할당 완료. 현재 값 length:', this.flatDeptRows.length);
+
           this.expandedDeptIds = depts
               .filter(d => d.children && d.children.length > 0)
               .map(d => d.deptId);
+          console.log('[DBG-7] expandedDeptIds:', this.expandedDeptIds);
         } catch (e) {
+          console.error('[DBG-CATCH] init() 예외 메시지:', e && e.message);
+          console.error('[DBG-CATCH] init() 예외 스택:', e && e.stack);
           console.error('[statistics] 조회 실패:', e);
           alert('통계 데이터를 불러오지 못했습니다.');
         } finally {
           this.ui.isLoading = false;
+          console.log('[DBG-8] init() 종료. final this.flatDeptRows length:',
+                      (this.flatDeptRows && this.flatDeptRows.length));
         }
       },
 
@@ -623,13 +655,20 @@
 
       /** 트리(부모 + children) → 평면 배열로 변환. _kind 마커로 부모/자식 구분. */
       buildFlatRows(rootNodes) {
+        console.log('[DBG-BF1] buildFlatRows 호출. rootNodes:', rootNodes,
+                    ' isArray:', Array.isArray(rootNodes));
         const rows = [];
         for (const dept of rootNodes || []) {
+          if (!dept || typeof dept !== 'object') {
+            console.warn('[DBG-BF-WARN] dept 가 객체 아님:', dept);
+            continue;
+          }
           rows.push({ ...dept, _kind: 'parent' });
           for (const child of dept.children || []) {
             rows.push({ ...child, _kind: 'child', _parentDeptId: dept.deptId });
           }
         }
+        console.log('[DBG-BF2] buildFlatRows 종료. rows.length:', rows.length);
         return rows;
       },
 
