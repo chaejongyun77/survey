@@ -130,57 +130,12 @@
         <div class="col-span-2 text-right">응답수</div>
       </div>
 
-      <!-- 부서별 행 — 부모/자식을 평탄화한 단일 리스트로 렌더링.
-           Alpine.js v3 의 중첩 <template x-for> 가 anchor 추적에서 깨지는 문제를 회피. -->
-      <div class="divide-y divide-gray-50">
-        <template x-for="row in buildFlatRows(deptRates)" :key="row._kind + '-' + row.deptId">
-          <div class="grid grid-cols-12 gap-3 items-center px-2"
-               :class="row._kind === 'parent'
-                       ? (row.children && row.children.length > 0 ? 'py-3.5 cursor-pointer hover:bg-gray-50' : 'py-3.5')
-                       : 'py-2.5 bg-gray-50/40'"
-               x-show="row._kind === 'parent' || isDeptExpanded(row._parentDeptId)"
-               @click="onRowClick(row)">
-
-            <!-- 조직명 (+ 부모일 때 펼치기 아이콘) -->
-            <div :class="row._kind === 'parent'
-                         ? 'col-span-2 text-sm text-gray-700 font-semibold flex items-center gap-1'
-                         : 'col-span-2 pl-6 text-xs text-gray-500'">
-              <span class="text-xs text-gray-400 w-3"
-                    x-text="(row._kind === 'parent' && row.children && row.children.length > 0)
-                            ? (isDeptExpanded(row.deptId) ? '▼' : '▶')
-                            : ''"></span>
-              <span x-text="row.deptName"></span>
-            </div>
-
-            <!-- 진행률 바 (부모는 두꺼운 막대, 자식은 얇은 막대) -->
-            <div class="col-span-7">
-              <div :class="row._kind === 'parent'
-                           ? 'h-2.5 bg-gray-100 rounded-full overflow-hidden'
-                           : 'h-2 bg-gray-100 rounded-full overflow-hidden'">
-                <div class="h-full rounded-full progress-bar"
-                     :class="barColor(row)"
-                     :style="`width: ${row.responseRate}%`"></div>
-              </div>
-            </div>
-
-            <!-- 비율 -->
-            <div class="col-span-1 text-right font-semibold"
-                 :class="(row._kind === 'parent' ? 'text-sm ' : 'text-xs ')
-                         + (row.lowRate ? 'text-gray-400'
-                            : (row._kind === 'parent' ? 'text-orange-500' : 'text-orange-400'))"
-                 x-text="row.responseRate + '%'"></div>
-
-            <!-- 응답수 / 대상자 -->
-            <div class="col-span-2 text-right text-xs text-gray-400"
-                 x-text="row.respondedCount + '/' + row.targetCount + '명'"></div>
-          </div>
-        </template>
-
-        <!-- 빈 상태 -->
-        <div x-show="deptRates.length === 0" class="text-center py-10 text-gray-400 text-sm">
-          조회된 조직이 없습니다.
-        </div>
-      </div>
+      <!-- 부서별 행 — Alpine x-for 의 'after' 에러를 회피하기 위해
+           x-effect + innerHTML 렌더링 + 이벤트 위임 방식.
+           deptRates 또는 expandedDeptIds 가 바뀌면 x-effect 가 재실행. -->
+      <div class="divide-y divide-gray-50"
+           x-effect="$el.innerHTML = renderDeptRowsHtml()"
+           @click="handleDeptRowClick($event)"></div>
 
       <p class="text-xs text-gray-300 text-right mt-4">
         기준: 응답률 70% 미만 조직은 회색 표시
@@ -620,7 +575,7 @@
         }
       },
 
-      /** 트리(부모 + children) → 단일 x-for 용 평면 배열로 변환. _kind 마커로 부모/자식 구분. */
+      /** 트리(부모 + children) → 평면 배열로 변환. _kind 마커로 부모/자식 구분. */
       buildFlatRows(rootNodes) {
         const rows = [];
         for (const dept of rootNodes || []) {
@@ -642,14 +597,62 @@
         if (this.isDeptExpanded(deptId)) {
           this.expandedDeptIds = this.expandedDeptIds.filter(id => id !== deptId);
         } else {
-          this.expandedDeptIds.push(deptId);
+          this.expandedDeptIds = [...this.expandedDeptIds, deptId];
         }
       },
 
-      /** row 한 줄 클릭 — 부모이면서 children 있을 때만 토글 */
-      onRowClick(row) {
-        if (row._kind === 'parent' && row.children && row.children.length > 0) {
-          this.toggleDept(row.deptId);
+      /** 부서 행 컨테이너 innerHTML 생성. x-effect 가 reactive deps 변경 시 호출. */
+      renderDeptRowsHtml() {
+        const depts = this.deptRates || [];
+        if (depts.length === 0) {
+          return '<div class="text-center py-10 text-gray-400 text-sm">조회된 조직이 없습니다.</div>';
+        }
+        const escape = (s) => String(s).replace(/[&<>"']/g, c =>
+          ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+        return this.buildFlatRows(depts)
+            .filter(row => row._kind === 'parent' || this.isDeptExpanded(row._parentDeptId))
+            .map(row => {
+              const isParent = row._kind === 'parent';
+              const hasChildren = isParent && row.children && row.children.length > 0;
+              const arrow = hasChildren ? (this.isDeptExpanded(row.deptId) ? '▼' : '▶') : '';
+              const rateColor = row.lowRate
+                  ? 'text-gray-400'
+                  : (isParent ? 'text-orange-500' : 'text-orange-400');
+              const rowCls = 'grid grid-cols-12 gap-3 items-center px-2 ' +
+                  (isParent
+                      ? (hasChildren ? 'py-3.5 cursor-pointer hover:bg-gray-50' : 'py-3.5')
+                      : 'py-2.5 bg-gray-50/40');
+              const nameCls = isParent
+                  ? 'col-span-2 text-sm text-gray-700 font-semibold flex items-center gap-1'
+                  : 'col-span-2 pl-6 text-xs text-gray-500';
+              const barCls = isParent
+                  ? 'h-2.5 bg-gray-100 rounded-full overflow-hidden'
+                  : 'h-2 bg-gray-100 rounded-full overflow-hidden';
+              const toggleAttr = hasChildren ? ` data-toggle-dept="${row.deptId}"` : '';
+
+              return `<div class="${rowCls}"${toggleAttr}>` +
+                  `<div class="${nameCls}">` +
+                      `<span class="text-xs text-gray-400 w-3">${arrow}</span>` +
+                      `<span>${escape(row.deptName)}</span>` +
+                  `</div>` +
+                  `<div class="col-span-7">` +
+                      `<div class="${barCls}">` +
+                          `<div class="h-full rounded-full progress-bar ${this.barColor(row)}" style="width: ${row.responseRate}%"></div>` +
+                      `</div>` +
+                  `</div>` +
+                  `<div class="col-span-1 text-right font-semibold ${isParent ? 'text-sm' : 'text-xs'} ${rateColor}">${row.responseRate}%</div>` +
+                  `<div class="col-span-2 text-right text-xs text-gray-400">${row.respondedCount}/${row.targetCount}명</div>` +
+                  `</div>`;
+            })
+            .join('');
+      },
+
+      /** 부서 행 컨테이너 클릭 — 이벤트 위임으로 토글 트리거 식별 */
+      handleDeptRowClick(e) {
+        const trigger = e.target.closest('[data-toggle-dept]');
+        if (trigger) {
+          this.toggleDept(parseInt(trigger.dataset.toggleDept, 10));
         }
       },
 
