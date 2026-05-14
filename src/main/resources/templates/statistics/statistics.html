@@ -251,7 +251,7 @@
             <!-- SCALE — 점수별 카드 (높은 점수부터 표시, 첫 카드 강조) -->
             <template x-if="q.questionType === 'SCALE'">
               <div class="grid gap-2" :style="`grid-template-columns: repeat(${q.items.length}, minmax(0, 1fr))`">
-                <template x-for="(item, i) in [...q.items].reverse()" :key="i">
+                <template x-for="(item, i) in q.items" :key="i">
                   <div class="rounded-lg px-3 py-4 text-center"
                        :class="i === 0 ? 'bg-orange-50' : 'bg-gray-50'">
                     <p class="text-2xl mb-1" x-text="scaleEmoji(i, q.items.length)"></p>
