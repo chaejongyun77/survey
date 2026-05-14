@@ -30,9 +30,12 @@
         다운로드 이력
       </button>
       <button @click="downloadStatisticsExcel()"
-              class="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white
-                     hover:bg-gray-50 transition-colors">
-        엑셀 다운로드
+              :disabled="ui.excelDownloading"
+              class="flex items-center gap-1.5 px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white
+                     hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors">
+        <span x-show="ui.excelDownloading"
+              class="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></span>
+        <span x-text="ui.excelDownloading ? '다운로드 중…' : '엑셀 다운로드'"></span>
       </button>
     </div>
   </header>
@@ -442,7 +445,8 @@
         respondentsLoaded: false,
         questionsLoading: false,
         questionsLoaded: false,
-        batchRunning: false
+        batchRunning: false,
+        excelDownloading: false
       },
       summary: {
         title: '', site: '', beginDate: '', endDate: '',
@@ -664,6 +668,7 @@
        * - 파일명: 서버 Content-Disposition 헤더에서 추출 (RFC 5987 UTF-8)
        */
       async downloadStatisticsExcel() {
+        this.ui.excelDownloading = true;
         try {
           const res = await axios.get(
               `/api/internal/v1/surveys/${SVY_ID}/statistics/export`,
@@ -684,6 +689,8 @@
         } catch (e) {
           console.error('[statistics] 엑셀 다운로드 실패:', e);
           alert('엑셀 파일을 다운로드하지 못했습니다.');
+        } finally {
+          this.ui.excelDownloading = false;
         }
       },
 
