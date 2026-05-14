@@ -1,5 +1,7 @@
 package com.woongjin.survey.global.security;
 
+import com.woongjin.survey.global.cookie.CookieUtil;
+import com.woongjin.survey.global.jwt.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woongjin.survey.global.filter.ClientTokenFilter;
 import com.woongjin.survey.global.jwt.ClientTokenProvider;
@@ -30,6 +32,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -153,6 +156,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/auth/login",
+                    "/auth/refresh-redirect",
                     "/css/**", "/js/**", "/images/**", "/*.html",
                     "/error/**",
                     "/api/external/v1/admin/auth/**",
@@ -169,9 +173,31 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 401 인증 실패 — 직원 체인은 Thymeleaf 기반이므로 로그인 페이지로 리다이렉트
+    /**
+     * 401 처리 — 토큰 없음/만료 통합
+     * - /api/** : JSON 401 → api.js interceptor가 reissue 후 재요청
+     * - 페이지   : 리프레시 토큰 있으면 /auth/refresh-redirect → 재발급 후 원래 페이지
+     *             없으면 /auth/login
+     */
     private AuthenticationEntryPoint unauthorizedEntryPoint() {
-        return (request, response, authException) -> response.sendRedirect("/auth/login");
+        return (request, response, authException) -> {
+            if (request.getRequestURI().startsWith("/api/")) {
+                writeJsonResponse(response, HttpServletResponse.SC_UNAUTHORIZED,
+                        ApiResponse.error("인증이 필요합니다."));
+                return;
+            }
+
+            String refreshToken = CookieUtil.extract(request, JwtAuthenticationFilter.REFRESH_TOKEN_COOKIE);
+            if (refreshToken != null) {
+                String uri = request.getRequestURI();
+                String qs  = request.getQueryString();
+                String original = (qs != null) ? uri + "?" + qs : uri;
+                response.sendRedirect("/auth/refresh-redirect?redirect=" +
+                        java.net.URLEncoder.encode(original, StandardCharsets.UTF_8));
+            } else {
+                response.sendRedirect("/auth/login");
+            }
+        };
     }
 
     // 403 권한 부족

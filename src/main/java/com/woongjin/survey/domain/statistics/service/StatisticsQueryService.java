@@ -62,9 +62,13 @@ public class StatisticsQueryService {
      * 조직별 응답률 — 상위(LVL=1) 부서 아래 하위(LVL=2) 부서를 children 으로 묶어 트리 반환.
      *
      * [조립 규칙]
-     *  - 직원은 leaf 부서(보통 LVL=2)에 매핑되어 있다고 가정 → Repository 결과는 leaf 단위 행
-     *  - parentDeptId 가 있으면 그 부모 아래 children 으로 그룹핑, 부모 응답률은 합산값으로 재계산
-     *  - parentDeptId 가 null 이면 (LVL=1 부서에 직원이 직접 있는 경우) 단독 노드로 추가
+     *  - 모든 행을 "LVL=1 루트 ID" 기준으로 그룹핑:
+     *      · parentDeptId 가 있으면 → 그 부모 ID 사용 (LVL=2 자식 행)
+     *      · parentDeptId 가 null 이면 → 자기 자신 ID 사용 (LVL=1 직속 행)
+     *    → 같은 LVL=1 트리에 속하는 행들이 한 그룹으로 모임
+     *  - 그룹 안의 self 행(deptId == 루트 ID)은 합산에 포함하되 children 리스트에는 안 넣음
+     *    → "LVL=1 부서에 직원 직속 + 자식 부서도 있음" 인 경우 부모 노드가 두 번 표시되는 버그 회피
+     *  - 자식 없이 self 만 있으면 leaf 단독 노드
      *  - 부모는 응답률 내림차순, children 도 내부에서 응답률 내림차순
      */
     @Transactional(readOnly = true)
@@ -75,34 +79,57 @@ public class StatisticsQueryService {
 
         List<DeptResponseRateProjection> leafProjections = statisticsRepository.findDeptResponseRates(surveyId);
 
-        Map<Long, List<DeptResponseRateProjection>> leavesByParentId = leafProjections.stream()
-                .filter(projection -> projection.parentDeptId() != null)
-                .collect(Collectors.groupingBy(DeptResponseRateProjection::parentDeptId));
+        Map<Long, List<DeptResponseRateProjection>> rowsByRootId = leafProjections.stream()
+                .collect(Collectors.groupingBy(p ->
+                        p.parentDeptId() != null ? p.parentDeptId() : p.deptId()));
 
         List<DeptResponseRateResponse> rootNodes = new ArrayList<>();
-
-        leavesByParentId.forEach((parentDeptId, siblingLeaves) -> {
-            String parentDeptName    = siblingLeaves.get(0).parentDeptName();
-            int totalTargetCount     = siblingLeaves.stream().mapToInt(projection -> (int) projection.targetCount()).sum();
-            int totalRespondedCount  = siblingLeaves.stream().mapToInt(projection -> (int) projection.respondedCount()).sum();
-
-            List<DeptResponseRateResponse> childNodes = siblingLeaves.stream()
-                    .map(DeptResponseRateResponse::leaf)
-                    .sorted(Comparator.comparingDouble(DeptResponseRateResponse::responseRate).reversed())
-                    .toList();
-
-            rootNodes.add(DeptResponseRateResponse.parent(
-                    parentDeptId, parentDeptName, totalTargetCount, totalRespondedCount, childNodes));
-        });
-
-        // 상위 부모가 없는 leaf — 단독 노드로 추가
-        leafProjections.stream()
-                .filter(projection -> projection.parentDeptId() == null)
-                .map(DeptResponseRateResponse::leaf)
-                .forEach(rootNodes::add);
+        rowsByRootId.forEach((rootDeptId, group) ->
+                rootNodes.add(buildRootNode(rootDeptId, group)));
 
         rootNodes.sort(Comparator.comparingDouble(DeptResponseRateResponse::responseRate).reversed());
         return rootNodes;
+    }
+
+    /**
+     * 한 LVL=1 트리(self 행 + 자식 행) → 루트 노드 1개로 조립.
+     *
+     * - 자식 없음 → self 단독 leaf 반환
+     * - 자식 있음 → 합산 부모 노드 반환. self 직속 행이 있으면 합산에는 포함하되
+     *   children 리스트에는 추가하지 않음(중복 표시 방지)
+     */
+    private DeptResponseRateResponse buildRootNode(Long rootDeptId,
+                                                    List<DeptResponseRateProjection> group) {
+        DeptResponseRateProjection selfRow = group.stream()
+                .filter(p -> p.deptId().equals(rootDeptId))
+                .findFirst()
+                .orElse(null);
+
+        List<DeptResponseRateProjection> childRows = group.stream()
+                .filter(p -> !p.deptId().equals(rootDeptId))
+                .toList();
+
+        // 자식이 없으면 self 단독 leaf
+        if (childRows.isEmpty()) {
+            return DeptResponseRateResponse.leaf(selfRow);
+        }
+
+        // 자식 있음 → 부모 노드 (self 직속이 있으면 합산에 흡수)
+        int totalTargetCount    = group.stream().mapToInt(p -> (int) p.targetCount()).sum();
+        int totalRespondedCount = group.stream().mapToInt(p -> (int) p.respondedCount()).sum();
+
+        // 부모 이름: self 행에서 우선 추출, 없으면 자식의 parentDeptName 사용
+        String rootDeptName = selfRow != null
+                ? selfRow.deptName()
+                : childRows.get(0).parentDeptName();
+
+        List<DeptResponseRateResponse> childNodes = childRows.stream()
+                .map(DeptResponseRateResponse::leaf)
+                .sorted(Comparator.comparingDouble(DeptResponseRateResponse::responseRate).reversed())
+                .toList();
+
+        return DeptResponseRateResponse.parent(
+                rootDeptId, rootDeptName, totalTargetCount, totalRespondedCount, childNodes);
     }
 
     /**
