@@ -134,10 +134,16 @@
                         this.addLog('→ 모달 닫기 처리', 'info');
                         this.closeModal();
 
+                    } else if (action === 'SURVEY_COMPLETED') {
+                        this.addLog('→ 설문 완료 처리', 'success');
+                        localStorage.setItem('survey_done_' + this.empNo.trim(), '1');
+                        this.closeModal();
+
                     } else if (action === 'START_SURVEY') {
                         this.addLog(`→ 설문 시작 (iframe 내부 이동 처리)`, 'success');
                     }
                 });
+                this.checkSurvey();
             },
 
             // STEP 1: 설문 체크 API 호출
@@ -145,6 +151,11 @@
                 const empNo = this.empNo.trim();
                 if (!empNo) {
                     this.addLog('사원번호를 입력하세요.', 'warn');
+                    return;
+                }
+
+                if (localStorage.getItem('survey_done_' + empNo)) {
+                    this.addLog('이미 설문에 참여하셨습니다.', 'warn');
                     return;
                 }
 

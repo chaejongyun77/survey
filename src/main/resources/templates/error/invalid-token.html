@@ -10,5 +10,10 @@
         <p class="text-gray-500 text-sm mb-2">유효하지 않거나 만료된 접근입니다.</p>
         <p class="text-gray-400 text-xs">창을 닫고 다시 시도해주세요.</p>
     </div>
+    <script>
+        if (window !== window.parent) {
+            window.parent.postMessage({ action: 'CLOSE_SURVEY_MODAL' }, '*');
+        }
+    </script>
 </body>
 </html>
