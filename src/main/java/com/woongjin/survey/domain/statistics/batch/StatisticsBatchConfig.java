@@ -19,6 +19,7 @@ import org.springframework.batch.item.support.ListItemReader;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.security.concurrent.DelegatingSecurityContextTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import java.util.List;
@@ -59,7 +60,7 @@ public class StatisticsBatchConfig {
     public JobLauncher asyncJobLauncher(JobRepository jobRepository) throws Exception {
         TaskExecutorJobLauncher launcher = new TaskExecutorJobLauncher();
         launcher.setJobRepository(jobRepository);
-        launcher.setTaskExecutor(new SimpleAsyncTaskExecutor());
+        launcher.setTaskExecutor(new DelegatingSecurityContextTaskExecutor(new SimpleAsyncTaskExecutor()));
         launcher.afterPropertiesSet();
         return launcher;
     }
