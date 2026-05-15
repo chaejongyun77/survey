@@ -205,9 +205,7 @@
             },
 
             navigate() {
-                // replace()로 이동하면 intro URL이 히스토리에서 제거되어
-                // 뒤로가기로 토큰 재사용 시도를 방지한다
-                window.location.replace(`/surveys/client/response?surveyId=${this.surveyId}`);
+                window.location.href = `/surveys/client/response?surveyId=${this.surveyId}`;
             },
 
             formatPeriod(beginDate, endDate) {
