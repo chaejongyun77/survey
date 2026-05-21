@@ -227,8 +227,8 @@
               </template>
             </p>
 
-            <!-- SINGLE_CHOICE / MULTIPLE_CHOICE / RANKING — 가로 막대 -->
-            <template x-if="['SINGLE_CHOICE', 'MULTIPLE_CHOICE', 'RANKING'].includes(q.questionType)">
+            <!-- SINGLE_CHOICE / MULTIPLE_CHOICE — 가로 막대 -->
+            <template x-if="['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(q.questionType)">
               <div class="space-y-2.5">
                 <template x-for="(item, i) in q.items" :key="i">
                   <div class="grid grid-cols-12 gap-3 items-center">
@@ -245,6 +245,28 @@
                          x-text="item.percentage + '%'"></div>
                   </div>
                 </template>
+              </div>
+            </template>
+
+            <!-- RANKING — 가중 점수 기준 상대 비율 막대 -->
+            <template x-if="q.questionType === 'RANKING'">
+              <div>
+                <p class="text-xs text-gray-400 mb-3">순위 가중 점수 기준 (1순위 높은 가중치)</p>
+                <div class="space-y-2.5">
+                  <template x-for="(item, i) in q.items" :key="i">
+                    <div class="grid grid-cols-12 gap-3 items-center">
+                      <div class="col-span-3 text-sm text-gray-700" x-text="item.label"></div>
+                      <div class="col-span-8">
+                        <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div class="h-full rounded-full bg-orange-400 progress-bar"
+                               :style="`width: ${item.percentage}%`"></div>
+                        </div>
+                      </div>
+                      <div class="col-span-1 text-right text-xs text-gray-400"
+                           x-text="item.percentage + '%'"></div>
+                    </div>
+                  </template>
+                </div>
               </div>
             </template>
 
