@@ -345,6 +345,7 @@ public class StatisticsQueryService {
             double pct = maxScore == 0 ? 0.0 : Math.round(scores[i] * 1000.0 / maxScore) / 10.0;
             result.add(new QuestionStatItemResponse(active.get(i).getItemName(), scores[i], pct));
         }
+        result.sort((a, b) -> Integer.compare(b.count(), a.count()));
         return result;
     }
 
