@@ -80,11 +80,17 @@ public class QuestionStatSheetWriter {
     /** SINGLE_CHOICE / MULTIPLE_CHOICE / RANKING / SCALE — 선택지 테이블 */
     private int writeChoiceRows(SXSSFSheet sheet, ExcelStyles styles,
                                 QuestionStatisticsResponse q, int rowIdx) {
-        // 헤더
+        // 헤더 — RANKING 은 가중 점수 기반이므로 라벨을 별도로 표기
         Row header = sheet.createRow(rowIdx++);
-        ExcelCells.setCell(header, 0, "선택지",   styles.header());
-        ExcelCells.setCell(header, 1, "응답수",   styles.header());
-        ExcelCells.setCell(header, 2, "비율(%)", styles.header());
+        if (q.questionType() == QuestionType.RANKING) {
+            ExcelCells.setCell(header, 0, "항목",         styles.header());
+            ExcelCells.setCell(header, 1, "가중 점수",     styles.header());
+            ExcelCells.setCell(header, 2, "상대 비율(%)", styles.header());
+        } else {
+            ExcelCells.setCell(header, 0, "선택지",   styles.header());
+            ExcelCells.setCell(header, 1, "응답수",   styles.header());
+            ExcelCells.setCell(header, 2, "비율(%)", styles.header());
+        }
 
         // 데이터
         for (QuestionStatItemResponse item : q.items()) {
