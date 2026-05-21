@@ -321,18 +321,32 @@ public class StatisticsQueryService {
         return result;
     }
 
-    /** 순위형 — 1순위 카운트만 추출하여 단순 막대로 표시 */
+    /** 순위형 — 가중 점수(1순위=N점, 2순위=N-1점, ...) 기준 상대 비율로 표시 */
     private List<QuestionStatItemResponse> buildRankingItems(
             RankingStatResult data, List<QuestionItem> options, int total) {
-        return options.stream()
+        List<QuestionItem> active = options.stream()
                 .filter(opt -> opt.getDeletedAt() == null)
-                .map(opt -> {
-                    Map<Integer, Integer> ranks = data.rankCounts().getOrDefault(opt.getId(), Map.of());
-                    int firstPlaceCount = ranks.getOrDefault(1, 0);
-                    return new QuestionStatItemResponse(
-                            opt.getItemName(), firstPlaceCount, percentage(firstPlaceCount, total));
-                })
                 .toList();
+        int N = active.size();
+
+        int[] scores = new int[active.size()];
+        for (int i = 0; i < active.size(); i++) {
+            Map<Integer, Integer> ranks = data.rankCounts().getOrDefault(active.get(i).getId(), Map.of());
+            for (Map.Entry<Integer, Integer> e : ranks.entrySet()) {
+                scores[i] += e.getValue() * (N - e.getKey() + 1);
+            }
+        }
+
+        int maxScore = 0;
+        for (int s : scores) if (s > maxScore) maxScore = s;
+
+        List<QuestionStatItemResponse> result = new ArrayList<>(active.size());
+        for (int i = 0; i < active.size(); i++) {
+            double pct = maxScore == 0 ? 0.0 : Math.round(scores[i] * 1000.0 / maxScore) / 10.0;
+            result.add(new QuestionStatItemResponse(active.get(i).getItemName(), scores[i], pct));
+        }
+        result.sort((a, b) -> Integer.compare(b.count(), a.count()));
+        return result;
     }
 
     private double percentage(int count, int total) {
