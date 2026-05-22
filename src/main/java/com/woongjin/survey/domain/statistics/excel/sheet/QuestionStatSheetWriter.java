@@ -80,18 +80,25 @@ public class QuestionStatSheetWriter {
     /** SINGLE_CHOICE / MULTIPLE_CHOICE / RANKING / SCALE — 선택지 테이블 */
     private int writeChoiceRows(SXSSFSheet sheet, ExcelStyles styles,
                                 QuestionStatisticsResponse q, int rowIdx) {
+        boolean isRanking = q.questionType() == QuestionType.RANKING;
+
         // 헤더
         Row header = sheet.createRow(rowIdx++);
-        ExcelCells.setCell(header, 0, "선택지",   styles.header());
-        ExcelCells.setCell(header, 1, "응답수",   styles.header());
-        ExcelCells.setCell(header, 2, "비율(%)", styles.header());
+        ExcelCells.setCell(header, 0, "선택지",                          styles.header());
+        ExcelCells.setCell(header, 1, isRanking ? "평균 순위" : "응답수", styles.header());
+        ExcelCells.setCell(header, 2, isRanking ? ""         : "비율(%)", styles.header());
 
         // 데이터
         for (QuestionStatItemResponse item : q.items()) {
             Row row = sheet.createRow(rowIdx++);
-            ExcelCells.setCell(row, 0, item.label(),                      styles.value());
-            ExcelCells.setCell(row, 1, String.valueOf(item.count()),       styles.value());
-            ExcelCells.setCell(row, 2, item.percentage() + "%",           styles.value());
+            ExcelCells.setCell(row, 0, item.label(), styles.value());
+            if (isRanking) {
+                ExcelCells.setCell(row, 1, (item.count() / 10.0) + "위", styles.value());
+                ExcelCells.setCell(row, 2, "",                           styles.value());
+            } else {
+                ExcelCells.setCell(row, 1, String.valueOf(item.count()),  styles.value());
+                ExcelCells.setCell(row, 2, item.percentage() + "%",      styles.value());
+            }
         }
 
         // SCALE 전용 — 평균 점수 추가 행
