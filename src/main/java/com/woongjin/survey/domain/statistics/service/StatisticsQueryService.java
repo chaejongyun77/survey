@@ -321,31 +321,38 @@ public class StatisticsQueryService {
         return result;
     }
 
-    /** 순위형 — 가중 점수(1순위=N점, 2순위=N-1점, ...) 기준 상대 비율로 표시 */
+    /**
+     * 순위형 — 항목별 평균 순위로 표시.
+     *  count      : 평균순위 × 10 (예: 1.3위 → 13) — 프론트에서 /10 하여 표시
+     *  percentage : 최저 평균순위 / 항목 평균순위 × 100 — 막대 너비용
+     */
     private List<QuestionStatItemResponse> buildRankingItems(
             RankingStatResult data, List<QuestionItem> options, int total) {
         List<QuestionItem> active = options.stream()
                 .filter(opt -> opt.getDeletedAt() == null)
                 .toList();
-        int N = active.size();
 
-        int[] scores = new int[active.size()];
+        double[] avgRanks = new double[active.size()];
         for (int i = 0; i < active.size(); i++) {
             Map<Integer, Integer> ranks = data.rankCounts().getOrDefault(active.get(i).getId(), Map.of());
+            int rankSum = 0, rankCount = 0;
             for (Map.Entry<Integer, Integer> e : ranks.entrySet()) {
-                scores[i] += e.getValue() * (N - e.getKey() + 1);
+                rankSum  += e.getKey() * e.getValue();
+                rankCount += e.getValue();
             }
+            avgRanks[i] = rankCount == 0 ? active.size() : (double) rankSum / rankCount;
         }
 
-        int maxScore = 0;
-        for (int s : scores) if (s > maxScore) maxScore = s;
+        double minAvgRank = Double.MAX_VALUE;
+        for (double r : avgRanks) if (r < minAvgRank) minAvgRank = r;
 
         List<QuestionStatItemResponse> result = new ArrayList<>(active.size());
         for (int i = 0; i < active.size(); i++) {
-            double pct = maxScore == 0 ? 0.0 : Math.round(scores[i] * 1000.0 / maxScore) / 10.0;
-            result.add(new QuestionStatItemResponse(active.get(i).getItemName(), scores[i], pct));
+            int avgRankTenths = (int) Math.round(avgRanks[i] * 10);
+            double barPct = Math.round(minAvgRank / avgRanks[i] * 1000) / 10.0;
+            result.add(new QuestionStatItemResponse(active.get(i).getItemName(), avgRankTenths, barPct));
         }
-        result.sort((a, b) -> Integer.compare(b.count(), a.count()));
+        result.sort((a, b) -> Integer.compare(a.count(), b.count())); // 낮은 평균순위 = 좋음
         return result;
     }
 
