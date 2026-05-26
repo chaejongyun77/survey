@@ -691,13 +691,14 @@ document.addEventListener('alpine:init', () => {
       </template>
     </div><!-- /문항 목록 -->
 
-    <!-- 하단 고정 제출 버튼 (호버 시 위로 플로팅) -->
-    <div class="fixed bottom-0 left-0 right-0 z-10 flex justify-center px-4 pb-4 pt-2
-                translate-y-2 hover:translate-y-0 transition-transform duration-300 ease-out">
+    <!-- 하단 트리거 영역: 마우스 진입 시 버튼 슬라이드업 -->
+    <div class="fixed bottom-0 left-0 right-0 h-20 z-10 flex items-end justify-center pb-4 group">
       <button class="w-full max-w-xs text-white font-semibold py-4 rounded-full text-base tracking-wide
-                     shadow-lg hover:shadow-2xl transition-all duration-300
+                     shadow-xl transition-all duration-300 ease-out
+                     translate-y-full opacity-0 pointer-events-none
+                     group-hover:translate-y-0 group-hover:opacity-100 group-hover:pointer-events-auto
                      disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none
-                     enabled:bg-orange-500 enabled:hover:bg-orange-600"
+                     enabled:bg-orange-500 enabled:hover:bg-orange-600 enabled:hover:shadow-2xl"
               @click="submitSurvey"
               :disabled="ui.isSubmitting">
         <span x-show="!ui.isSubmitting">설문 제출하기</span>
