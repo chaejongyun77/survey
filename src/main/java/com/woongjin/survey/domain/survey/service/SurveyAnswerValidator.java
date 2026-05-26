@@ -111,30 +111,45 @@ public class SurveyAnswerValidator {
     private Set<Long> calculateActiveQuestions(List<Question> questions,
                                                List<QuestionBranch> branches,
                                                Map<Long, SurveyAnswerDto> answerByQuestionId) {
-        // 자식 questionId → 분기 정의 (1:1 가정)
         Map<Long, QuestionBranch> branchByChildId = branches.stream()
                 .collect(Collectors.toMap(
                         QuestionBranch::getChildQuestionId,
                         branch -> branch
                 ));
 
+        Map<Long, Question> questionById = questions.stream()
+                .collect(Collectors.toMap(Question::getId, q -> q));
+
         Set<Long> activeQuestionIds = new HashSet<>();
 
         for (Question question : questions) {
             QuestionBranch branch = branchByChildId.get(question.getId());
 
-            // 분기 자식이 아닌 문항은 항상 활성
             if (branch == null) {
                 activeQuestionIds.add(question.getId());
                 continue;
             }
 
-            // 분기 자식 문항은 부모 답변을 확인하여 활성 여부 결정
             SurveyAnswerDto parentAnswer = answerByQuestionId.get(branch.getParentQuestionId());
-            if (parentAnswer == null || parentAnswer.getSelectedItemIds() == null) continue;
+            if (parentAnswer == null) continue;
 
-            // 부모 답변에 분기 정의의 parentItemId 가 포함되어 있으면 활성
-            if (parentAnswer.getSelectedItemIds().contains(branch.getParentItemId())) {
+            boolean triggered = false;
+            if (parentAnswer.getSelectedItemIds() != null) {
+                // SINGLE_CHOICE, MULTIPLE_CHOICE
+                triggered = parentAnswer.getSelectedItemIds().contains(branch.getParentItemId());
+            } else if (parentAnswer.getScaleValue() != null) {
+                // SCALE: scaleValue(1-based) → 해당 인덱스의 itemId와 비교
+                Question parentQuestion = questionById.get(branch.getParentQuestionId());
+                if (parentQuestion != null) {
+                    var items = parentQuestion.getItems();
+                    int idx = parentAnswer.getScaleValue() - 1;
+                    if (idx >= 0 && idx < items.size()) {
+                        triggered = items.get(idx).getId().equals(branch.getParentItemId());
+                    }
+                }
+            }
+
+            if (triggered) {
                 activeQuestionIds.add(question.getId());
             }
         }

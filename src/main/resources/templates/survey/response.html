@@ -260,6 +260,14 @@ document.addEventListener('alpine:init', () => {
     selectScale(qstId, itemId) {
       this.responses.single[qstId] = itemId;
       delete this.responses.errors[qstId];
+      // 분기 자식 문항 답변 초기화 (selectSingle과 동일)
+      const branch = this.findBranchByParent(qstId);
+      if (branch) {
+        const cid = branch.childQstId;
+        delete this.responses.single[cid];
+        this.responses.multiple[cid] = [];
+        this.responses.text[cid]     = '';
+      }
     },
 
     // MULTIPLE
