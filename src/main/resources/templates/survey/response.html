@@ -691,26 +691,23 @@ document.addEventListener('alpine:init', () => {
       </template>
     </div><!-- /문항 목록 -->
 
-    <!-- 하단 고정 제출 버튼 -->
-    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 shadow-lg z-10">
-      <div class="max-w-xl mx-auto">
-        <p class="text-xs text-gray-400 text-center mb-3">* 표시 항목은 필수 응답입니다</p>
-        <button class="w-full text-white font-semibold py-4 rounded-2xl text-base tracking-wide
-                       transition-all duration-200 active:scale-98
-                       disabled:bg-gray-300 disabled:cursor-not-allowed
-                       enabled:bg-orange-500 enabled:hover:bg-orange-600 enabled:hover:shadow-lg"
-                @click="submitSurvey"
-                :disabled="ui.isSubmitting">
-          <span x-show="!ui.isSubmitting">설문 제출하기</span>
-          <span x-show="ui.isSubmitting" class="flex items-center justify-center gap-2">
-            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="white" stroke-width="4"/>
-              <path class="opacity-75" fill="white" d="M4 12a8 8 0 018-8v8z"/>
-            </svg>
-            제출 중...
-          </span>
-        </button>
-      </div>
+    <!-- 플로팅 제출 버튼 -->
+    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-10 w-full max-w-xs px-4">
+      <button class="w-full text-white font-semibold py-4 rounded-full text-base tracking-wide
+                     shadow-xl transition-all duration-200 active:scale-95
+                     disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none
+                     enabled:bg-orange-500 enabled:hover:bg-orange-600 enabled:hover:shadow-2xl"
+              @click="submitSurvey"
+              :disabled="ui.isSubmitting">
+        <span x-show="!ui.isSubmitting">설문 제출하기</span>
+        <span x-show="ui.isSubmitting" class="flex items-center justify-center gap-2">
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="white" stroke-width="4"/>
+            <path class="opacity-75" fill="white" d="M4 12a8 8 0 018-8v8z"/>
+          </svg>
+          제출 중...
+        </span>
+      </button>
     </div>
 
   </div><!-- /메인 -->
